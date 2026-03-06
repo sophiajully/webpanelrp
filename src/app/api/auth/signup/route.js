@@ -16,9 +16,8 @@ export async function POST(req) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // --- LÓGICA PARA DONO ---
-  // --- LÓGICA PARA DONO ---
+// --- LÓGICA PARA DONO ---
 if (type === 'owner') {
-  // Validar a Key
   const validKey = await prisma.accessKey.findUnique({
     where: { key: accessKey, used: false }
   });
@@ -30,42 +29,46 @@ if (type === 'owner') {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + validKey.days);
 
-  // Transação corrigida
-  const result = await prisma.$transaction(async (tx) => {
-    // 1. Criamos o Usuário e a Empresa simultaneamente
-    // Assim o Prisma resolve os IDs automaticamente para você
-    const user = await tx.user.create({
-      data: {
-        username,
-        password: hashedPassword,
-        isOwner: true,
-        expiresAt: expiresAt,
-        // Aqui está o segredo: Criamos a empresa dentro da criação do usuário
-        company: {
-          create: {
-            name: companyName,
-          }
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Criar o usuário primeiro (sem o companyId por enquanto)
+      const user = await tx.user.create({
+        data: {
+          username,
+          password: hashedPassword,
+          isOwner: true,
+          expiresAt: expiresAt,
         }
-      },
-      include: { company: true } // Para termos acesso ao ID da empresa depois se precisar
+      });
+
+      // 2. Criar a empresa já passando o ID do usuário que acabamos de obter
+      const company = await tx.company.create({
+        data: {
+          name: companyName,
+          ownerId: user.id // Agora o user.id existe!
+        }
+      });
+
+      // 3. Atualizar o usuário para vincular o ID da empresa criada
+      const updatedUser = await tx.user.update({
+        where: { id: user.id },
+        data: { companyId: company.id }
+      });
+
+      // 4. Queimar a key
+      await tx.accessKey.update({
+        where: { id: validKey.id },
+        data: { used: true, usedBy: username }
+      });
+
+      return updatedUser;
     });
 
-    // 2. Agora vinculamos o ownerId na empresa (se o seu esquema exigir isso explicitamente)
-    await tx.company.update({
-      where: { id: user.companyId },
-      data: { ownerId: user.id }
-    });
-
-    // 3. Queima a key
-    await tx.accessKey.update({
-      where: { id: validKey.id },
-      data: { used: true, usedBy: username }
-    });
-
-    return user;
-  });
-
-  return NextResponse.json({ message: "Empresa e Dono criados com sucesso!" }, { status: 201 });
+    return NextResponse.json({ message: "Empresa e Dono criados com sucesso!" }, { status: 201 });
+  } catch (error) {
+    console.error("Erro na transação:", error);
+    throw error;
+  }
 }
 
     // --- LÓGICA PARA FUNCIONÁRIO ---
