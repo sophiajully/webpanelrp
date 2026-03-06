@@ -276,7 +276,10 @@ async carregarCrafts() {
         if (input) input.value = "";
     },
 
-    // 4. Renderiza o carrinho lateral
+   removerDoCarrinhoMercado(index) {
+        this.carrinhoMercado.splice(index, 1);
+        this.renderizarCarrinhoMercado();
+    },
     renderizarCarrinhoMercado() {
         const container = document.getElementById("itensCarrinhoMercado");
         if (!container) return;
@@ -304,12 +307,7 @@ async carregarCrafts() {
         `;
     },
 
-    removerDoCarrinhoMercado(index) {
-        this.carrinhoMercado.splice(index, 1);
-        this.renderizarCarrinhoMercado();
-    },
-
-    // 5. Finaliza a Encomenda
+    
     async enviarPropostaMercado() {
         if (this.carrinhoMercado.length === 0 || !this.empresaSelecionadaId) {
             return alert("O carrinho está vazio ou nenhuma empresa foi selecionada!");
@@ -715,11 +713,8 @@ async removerPedido(id) {
             li.innerHTML = "";
             this.adicionarCampoInsumo();
         }
-    }
-};
-
-Object.assign(window.app, {
-    mercadoRawData: [],
+    },
+        mercadoRawData: [],
     empresaSelecionadaId: null,
     carrinhoMercado: [],
 
@@ -804,7 +799,8 @@ Object.assign(window.app, {
             </div>
         `).join('');
     }
-});
+};
+
 
 // Funções globais de Modal
 window.toggleModal = function(show) { 
