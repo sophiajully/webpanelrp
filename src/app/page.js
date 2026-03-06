@@ -106,61 +106,98 @@ export default function Home() {
         </div>
       </nav>
 
-      <main className="main-content">
-        <header>
-          <h2 id="page-title">Nova Encomenda</h2>
-          <button className="btn-settings" onClick={() => window.toggleModal(true)}>⚙️</button>
-        </header>
+     <main className="main-content">
+  <header>
+    <h2 id="page-title">Nova Encomenda</h2>
+    <button className="btn-settings" onClick={() => window.toggleModal(true)}>⚙️</button>
+  </header>
 
-        {/* --- ABAS PADRÃO (Vendas, Registrar, Produção, Pedidos) --- */}
-        {/* ... (O conteúdo destas abas permanece o mesmo do código anterior) ... */}
-        <div id="tab-vendas" className={`page-content ${activeTab === "tab-vendas" ? "active" : ""}`}>
-           {/* Conteúdo da aba vendas aqui */}
-        </div>
+  {/* --- ABA: VENDAS (Sempre visível se ativa) --- */}
+  <div id="tab-vendas" className={`page-content ${activeTab === "tab-vendas" ? "active" : ""}`}>
+    <div className="card">
+      <h3>🛒 Nova Encomenda</h3>
+      <input type="text" id="clienteNome" placeholder="Nome do Cliente" />
+      <input type="text" id="clientePombo" placeholder="Pombo (Contato)" />
+      <h3 style={{ marginTop: "20px" }}>Produtos</h3>
+      <select id="produtoSelect"></select>
+      <input type="number" id="quantidadeItem" placeholder="Quantidade" />
+      <button className="primary btn-theme" onClick={() => window.app.adicionarItem()}>+ Adicionar à Lista</button>
+    </div>
+    <div className="card">
+      <h3>Resumo</h3>
+      <div id="listaEncomenda"></div>
+      <button onClick={() => window.app.calcularEncomenda()} className="btn-outline">Finalizar Encomenda</button>
+    </div>
+  </div>
 
-        {/* --- ABA MASTER KEYS --- */}
-        {session?.user?.name === "admin" && (
-          <div id="tab-master" className={`page-content ${activeTab === "tab-master" ? "active" : ""}`}>
-            <div className="card" style={{border: '1px solid #f1c40f44'}}>
-              <h3 style={{color: '#f1c40f'}}>🛠️ Gerador de Access Keys</h3>
-              <p style={{marginBottom: '15px', color: '#aaa'}}>Defina a validade da licença para o novo cliente.</p>
-              
-              <div style={styles.masterForm}>
-                <input 
-                  type="number" 
-                  placeholder="Ex: 30 dias" 
-                  value={newKeyDays} 
-                  onChange={(e) => setNewKeyDays(e.target.value)}
-                  style={styles.masterInput}
-                />
-                <button 
-                  className="primary" 
-                  style={styles.masterBtn} 
-                  onClick={gerarNovaKey}
-                  disabled={loadingKey}
-                >
-                  {loadingKey ? "Gerando..." : "Gerar Chave"}
-                </button>
+  {/* --- ABA: PEDIDOS --- */}
+  <div id="tab-pedidos" className={`page-content ${activeTab === "tab-pedidos" ? "active" : ""}`}>
+    <div className="card">
+      <h3>📋 Histórico de Pedidos</h3>
+      <div id="listaPedidosGeral">Carregando pedidos...</div>
+    </div>
+  </div>
+
+  {/* --- ABA: REGISTRAR CRAFT --- */}
+  <div id="tab-registrar" className={`page-content ${activeTab === "tab-registrar" ? "active" : ""}`}>
+    <div className="card">
+      <h3>🛠️ Configurar Nova Receita</h3>
+      <input type="text" id="craftNome" placeholder="Nome do Produto" />
+      <input type="number" id="unidades" placeholder="Qtd. produzida" />
+      <div id="areaInsumos">
+        <h4>Insumos</h4>
+        <div id="listaInsumosDinamicos"></div>
+        <button className="btn-outline" onClick={() => window.app.adicionarCampoInsumo()}>+ Insumo</button>
+      </div>
+      <button className="primary" onClick={() => window.app.registrarCraft()}>Salvar Receita</button>
+    </div>
+  </div>
+
+  {/* --- ABA: PAINEL DE PRODUÇÃO --- */}
+  <div id="tab-producao" className={`page-content ${activeTab === "tab-producao" ? "active" : ""}`}>
+    <div className="card">
+      <h3>🥩 Painel de Produção</h3>
+      <div id="listaCrafts"></div>
+      <button className="primary" onClick={() => window.app.calcularMateriais()}>Gerar Relatório</button>
+    </div>
+    <div id="materiaisResultado" className="result" style={{display: 'none'}}></div>
+  </div>
+
+  {/* --- ABA: GESTÃO DE EQUIPE --- */}
+  <div id="tab-equipe" className={`page-content ${activeTab === "tab-equipe" ? "active" : ""}`}>
+    <div className="card">
+      <h3>👥 Gestão de Colaboradores</h3>
+      <div id="listaEquipeDono">Carregando equipe...</div>
+    </div>
+  </div>
+
+  {/* --- ABA: MASTER KEYS (SÓ ADMIN) --- */}
+  {session?.user?.name === "admin" && (
+    <div id="tab-master" className={`page-content ${activeTab === "tab-master" ? "active" : ""}`}>
+      {/* O conteúdo que você já tinha aqui da Master Key */}
+      <div className="card" style={{border: '1px solid #f1c40f44'}}>
+         <h3 style={{color: '#f1c40f'}}>🛠️ Gerador de Access Keys</h3>
+         <div style={styles.masterForm}>
+            <input type="number" value={newKeyDays} onChange={(e) => setNewKeyDays(e.target.value)} style={styles.masterInput} />
+            <button className="primary" style={styles.masterBtn} onClick={gerarNovaKey} disabled={loadingKey}>
+              {loadingKey ? "Gerando..." : "Gerar Chave"}
+            </button>
+         </div>
+      </div>
+      <div className="card">
+         <h3>📋 Keys Geradas</h3>
+         <div style={styles.keyList}>
+            {keyList.map(k => (
+              <div key={k.id} style={styles.keyItem}>
+                <code>{k.key}</code>
+                <span>{k.used ? "❌" : "✅"}</span>
               </div>
-            </div>
-
-            <div className="card">
-              <h3>📋 Últimas Keys Geradas</h3>
-              <div style={styles.keyList}>
-                {keyList.map((k) => (
-                  <div key={k.id} style={styles.keyItem}>
-                    <code style={{color: '#f1c40f', fontSize: '1.1rem'}}>{k.key}</code>
-                    <span style={{fontSize: '0.8rem', color: k.used ? '#ff4c4c' : '#00ff90'}}>
-                      {k.used ? "❌ USADA" : `✅ DISPONÍVEL (${k.days} dias)`}
-                    </span>
-                  </div>
-                ))}
-                {keyList.length === 0 && <p style={{color: '#666'}}>Nenhuma chave encontrada no banco.</p>}
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
+            ))}
+         </div>
+      </div>
+    </div>
+  )}
+</main>
 
       {/* --- MODAL CONFIGURAÇÕES --- */}
       {/* ... (Conteúdo do modal permanece igual) ... */}
