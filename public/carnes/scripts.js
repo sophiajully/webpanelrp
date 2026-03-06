@@ -11,9 +11,9 @@ window.app = {
     companyId: null,
 
     init() {
-        console.log("🚜 SafraLog: Sistema Inicializado");
+
         this.companyId = document.body.getAttribute("data-company-id");
-        console.log("ID da Empresa carregado:", this.companyId);
+
         
         this.carregarConfig();
         this.carregarCrafts();
@@ -41,8 +41,16 @@ async calcularEncomenda() {
         return alert("Preencha o nome do cliente e adicione pelo menos um item!");
     }
 
+
+
+
     // 1. Calcular Total (apenas para o Webhook, já que a Model Pedido foca nos itens)
-    const total = this.encomendaAtual.reduce((acc, item) => acc + (item.precoUn * item.qtd), 0);
+   const total = this.encomendaAtual.reduce((acc, item) => {
+    const p = parseFloat(String(item.precoUn).replace(',', '.'));
+
+    return acc + (p * item.qtd);
+}, 0);
+
 
     // 2. Preparar os dados para o Banco de Dados (API POST)
     const dadosPedido = {
@@ -64,16 +72,17 @@ async calcularEncomenda() {
         const pedidoCriado = await response.json();
 
         // 4. Enviar Webhook de Venda para o Discord
-        const itensTexto = this.encomendaAtual.map(i => `📦 **${i.nome}** (x${i.qtd})`).join('\n');
+        const itensTexto = this.encomendaAtual.map(i => `🔸 **${i.nome}** (x${i.qtd})`).join('\n');
         
         await this.enviarWebhook(this.config.webhookVendas, {
-            title: "💰 Nova Encomenda Recebida!",
+            title: "Nova Encomenda Recebida!",
             color: 0x00ff90,
             fields: [
                 { name: "👤 Cliente", value: nomeCliente, inline: true },
                 { name: "🕊️ Contato", value: contatoCliente || "Não informado", inline: true },
-                { name: "📝 Itens", value: itensTexto },
-                { name: "💵 Valor Estimado", value: `R$ ${total.toLocaleString()}` }
+                { name: "💰 Valor total", value: `$ ${total.toLocaleString()}` },
+                { name: "📝 Itens da Encomenda", value: itensTexto },
+                
             ],
             footer: { text: `SafraLog ID: ${pedidoCriado.id}` },
             timestamp: new Date().toISOString()
@@ -92,7 +101,7 @@ async calcularEncomenda() {
         this.renderizarPedidos(); // Recarrega a lista da aba de pedidos vindo do banco
 
     } catch (err) {
-        console.error("Erro na finalização:", err);
+
         alert("Falha ao salvar pedido: " + err.message);
     }
 },
@@ -104,7 +113,7 @@ async calcularEncomenda() {
         try {
             const response = await fetch(`/api/config?companyId=${companyId}`);
 
-            console.log(response)
+
             const dbConfig = await response.json();
 
             if (dbConfig && !dbConfig.error) {
@@ -117,7 +126,7 @@ async calcularEncomenda() {
                 };
             }
         } catch (err) {
-            console.error("Erro ao carregar do DB, usando fallback local", err);
+
             // Fallback para LocalStorage se a rede falhar
             const saved = JSON.parse(localStorage.getItem("painel_config") || "{}");
             this.config = { ...this.config, ...saved };
@@ -134,9 +143,6 @@ async calcularEncomenda() {
         setVal("nomeEmpresaInput", this.config.nomeEmpresa);
         setVal("colorPrimary", this.config.colorPrimary);
         setVal("colorAccent", this.config.colorAccent);
-        
-        const display = document.getElementById("nomeEmpresaDisplay");
-        if (display) display.innerText = this.config.nomeEmpresa;
         
         this.aplicarTema();
     },
@@ -168,11 +174,11 @@ async salvarConfig(companyId) {
         alert("Configurações salvas!");
         if (window.toggleModal) window.toggleModal(false);
 
-        
+
         return novaConfig; 
 
     } catch (err) {
-        console.error("Erro no Fetch:", err);
+
         alert(`Erro ao salvar: ${err.message}`);
         return null;
     }
@@ -218,7 +224,7 @@ async salvarConfig(companyId) {
             window.carregarRoles()
 
         } catch (err) {
-            console.error("Erro ao excluir cargo:", err);
+
             alert("Falha ao excluir: " + err.message);
         }
     },
@@ -247,15 +253,16 @@ async carregarCrafts() {
             // Guarda na memória para uso rápido na venda
             this.craftsCache = crafts;
         } catch (err) {
-            console.error("Erro ao carregar receitas:", err);
+
         }
     },
 
     async registrarCraft() {
         const nome = document.getElementById("craftNome")?.value;
         const unidade = document.getElementById("unidades")?.value;
+        const price = document.getElementById("price")?.value;
         
-        if (!nome || !unidade) return alert("Preencha os dados básicos!");
+        if (!nome || !unidade || !price) return alert("Preencha os dados básicos!");
 
         const insumos = [];
         document.querySelectorAll(".insumo-row").forEach(row => {
@@ -271,7 +278,8 @@ async carregarCrafts() {
                 body: JSON.stringify({ 
                     name: nome, 
                     unit: unidade, 
-                    insumos: insumos // O backend vai stringificar isso
+                    insumos: insumos,
+                    price
                 })
             });
 
@@ -323,11 +331,13 @@ async carregarCrafts() {
 
         // Busca no cache que carregamos do banco
         const produto = this.craftsCache.find(c => c.name === nome);
+
+
         
         this.encomendaAtual.push({ 
             nome, 
             qtd, 
-            precoUn: 0 // Se quiser adicionar preço no model Craft depois, ajuste aqui
+            precoUn: produto.price || 0
         });
         
         this.atualizarViewEncomenda();
@@ -346,9 +356,9 @@ async carregarCrafts() {
                 payload: { url, embed }
             })
         });
-        console.log("🚀 Webhook agendado na fila com sucesso.");
+
     } catch (err) {
-        console.error("Erro ao colocar webhook na fila:", err);
+
     }
 },
 
@@ -366,34 +376,6 @@ async carregarCrafts() {
         `;
         container.appendChild(div);
     },
-calcularMateriais() {
-    const inputs = document.querySelectorAll(".input-qtd-producao");
-    const totais = {}; // Objeto para somar tudo (ex: { "Sal": 50, "Carne": 20 })
-
-    inputs.forEach(input => {
-        const qtdDesejada = parseInt(input.value) || 0;
-        if (qtdDesejada <= 0) return;
-
-        // Encontra o item original nos seus dados (precisa estar acessível, ex: window.app.dados.crafts)
-        const craft = window.app.dados.crafts.find(c => c.id === input.dataset.id);
-        
-        if (craft && craft.insumos) {
-            const insumos = JSON.parse(craft.insumos); // [ { "item": "Sal", "qtd": 2 }, ... ]
-            
-            insumos.forEach(insumo => {
-                const totalNecessario = insumo.qtd * qtdDesejada;
-                if (totais[insumo.item]) {
-                    totais[insumo.item] += totalNecessario;
-                } else {
-                    totais[insumo.item] = totalNecessario;
-                }
-            });
-        }
-    });
-
-    // Exibir o resultado
-    this.mostrarResultadoProducao(totais);
-},
 
 mostrarResultadoProducao(totais) {
     const resDiv = document.getElementById("materiaisResultado");
@@ -417,7 +399,7 @@ mostrarResultadoProducao(totais) {
 // scripts.js
 
 calcularMateriais(craftList, producaoQtds) {
-    console.log("[Calculadora] Iniciando cálculo...", { craftList, producaoQtds });
+
 
     const totaisMateriais = {};
     const resumoCrafts = [];
@@ -431,7 +413,7 @@ calcularMateriais(craftList, producaoQtds) {
         const qtdDesejada = parseInt(qtd);
         if (isNaN(qtdDesejada) || qtdDesejada <= 0) return;
 
-        const craft = craftList.find(c => String(c.id) === String(id));
+        const craft = this.craftsCache.find(c => c.id == id);
         
         if (craft) {
             const unidadesPorCraft = parseInt(craft.unit) || 1;
@@ -446,7 +428,7 @@ calcularMateriais(craftList, producaoQtds) {
             let insumos = [];
             try {
                 insumos = typeof craft.insumos === 'string' ? JSON.parse(craft.insumos) : craft.insumos;
-            } catch (e) { console.error("Erro JSON:", e); }
+            } catch (e) {}
 
             // CORREÇÃO AQUI:
             insumos.forEach(insumo => {
@@ -517,26 +499,7 @@ renderizarResultadoProducao(resumoCrafts, totaisMateriais) {
     resDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 },
 
-mostrarResultadoProducao(totais) {
-    const resDiv = document.getElementById("materiaisResultado");
-    const listaUl = document.getElementById("listaInsumosSomados");
-    
-    if (Object.keys(totais).length === 0) {
-        alert("Digite a quantidade de pelo menos um item!");
-        return;
-    }
 
-    listaUl.innerHTML = Object.entries(totais)
-        .map(([nome, qtd]) => `
-            <li style="padding: 8px 0; border-bottom: 1px dashed #ddd;">
-                ✅ <strong>${qtd}x</strong> ${nome}
-            </li>
-        `).join('');
-
-    resDiv.style.display = 'block';
-    resDiv.scrollIntoView({ behavior: 'smooth' });
-},
-// --- ATUALIZAÇÃO DO SCRIPTS.JS PARA USAR O BANCO DE DADOS ---
 
 async renderizarPedidos() {
     const container = document.getElementById("listaPedidosGeral");
@@ -578,7 +541,7 @@ async renderizarPedidos() {
             </div>
         `).join('');
     } catch (err) {
-        console.error("Erro ao renderizar pedidos:", err);
+
         container.innerHTML = "<p style='color:red; text-align:center'>Erro ao carregar pedidos do servidor.</p>";
     }
 },
@@ -647,7 +610,7 @@ async removerPedido(id) {
     limparCamposCraft() {
         const cn = document.getElementById("craftNome");
         const un = document.getElementById("unidades");
-        const pv = document.getElementById("precoVenda");
+        const pv = document.getElementById("price");
         const li = document.getElementById("listaInsumosDinamicos");
 
         if (cn) cn.value = "";

@@ -92,6 +92,8 @@ if (type === 'owner') {
         }
       });
 
+      
+
       return NextResponse.json({ message: "Solicitação enviada! Aguarde a aprovação do dono." }, { status: 201 });
     }
 

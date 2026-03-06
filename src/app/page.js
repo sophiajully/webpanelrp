@@ -21,7 +21,8 @@ import {
   CheckCircle, 
   XCircle, 
   Ban,
-  UserPlus
+  UserPlus,
+  ChevronRight
 } from "lucide-react";
 
 export default function Home() {
@@ -46,38 +47,31 @@ export default function Home() {
   };
 
   const handleSalvarConfig = async () => {
-  // Chama a função do scripts.js e espera os dados
-  const novosDados = await window.app.salvarConfig(session?.user?.companyId);
-  console.log(session.user)
-  // Se salvou com sucesso no banco, atualizamos a sessão no React
-  if (novosDados && update) {
-    await update({
-      ...session,
-      user: {
-        ...session.user,
-        colorPrimary: novosDados.colorPrimary,
-        colorAccent: novosDados.colorAccent,
-        companyName: novosDados.name
+    const novosDados = await window.app.salvarConfig(session?.user?.companyId);
+
+    if (novosDados && update) {
+      await update({
+        ...session,
+        user: {
+          ...session.user,
+          colorPrimary: novosDados.colorPrimary,
+          colorAccent: novosDados.colorAccent,
+          companyName: novosDados.name
+        }
+      });
+      
+      if (status === "authenticated") {
+        const corPrimaria = session?.user?.colorPrimary || "#d4a91c";
+        const corDestaque = session?.user?.colorAccent || "#f1c40f";
+
+        const root = document.documentElement;
+        root.style.setProperty('--cor-primaria', corPrimaria);
+        root.style.setProperty('--cor-destaque', corDestaque);
+        root.style.setProperty('--cor-primaria-bg', `${corPrimaria}1A`); 
+        root.style.setProperty('--cor-destaque-bg', `${corDestaque}1A`);
       }
-    });
-     if (status === "authenticated") {
-    // Pegue as cores da sessão (Verifique no console se os nomes dos campos estão certos)
-    const corPrimaria = session?.user?.colorPrimary || "#d4a91c";
-    const corDestaque = session?.user?.colorAccent || "#f1c40f";
-
-    console.log("Cores carregadas:", { corPrimaria, corDestaque });
-
-    const root = document.documentElement;
-    root.style.setProperty('--cor-primaria', corPrimaria);
-    root.style.setProperty('--cor-destaque', corDestaque);
-    
-    // Versões com transparência para o background dos itens ativos
-    root.style.setProperty('--cor-primaria-bg', `${corPrimaria}1A`); 
-    root.style.setProperty('--cor-destaque-bg', `${corDestaque}1A`);
-  }
-    console.log("Sessão atualizada com as novas cores!");
-  }
-};
+    }
+  };
 
   const carregarCrafts = useCallback(async () => {
     const res = await fetch('/api/crafts');
@@ -90,53 +84,49 @@ export default function Home() {
       setCraftList(formatados); 
     }
   }, []);
-const [hireRequests, setHireRequests] = useState([]);
 
-// No seu useEffect que carrega a equipe, adicione:
-const carregarSolicitacoes = async () => {
-  const res = await fetch('/api/hire-requests');
-  const data = await res.json();
-  setHireRequests(data);
-};
+  const [hireRequests, setHireRequests] = useState([]);
 
-const gerenciarSolicitacao = async (requestId, action) => {
-  setLoadingAction(true);
-  try {
-    const res = await fetch('/api/hire-requests', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requestId, action })
-    });
-    
-    if (res.ok) {
-      // Recarrega as duas listas para atualizar a tela
-      carregarSolicitacoes();
-      carregarEquipe(); 
+  const carregarSolicitacoes = async () => {
+    const res = await fetch('/api/hire-requests');
+    const data = await res.json();
+    setHireRequests(data);
+  };
+
+  const gerenciarSolicitacao = async (requestId, action) => {
+    setLoadingAction(true);
+    try {
+      const res = await fetch('/api/hire-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, action })
+      });
+      
+      if (res.ok) {
+        carregarSolicitacoes();
+        carregarEquipe(); 
+      }
+    } catch (err) {
+      alert("Erro ao processar solicitação");
+    } finally {
+      setLoadingAction(false);
     }
-  } catch (err) {
-    alert("Erro ao processar solicitação");
-  } finally {
-    setLoadingAction(false);
-  }
-};
+  };
+
   const excluirKey = async (id) => {
-  if (!confirm("Deseja realmente excluir esta chave de acesso?")) return;
-  
-  setLoadingAction(true);
-  try {
-    const res = await fetch(`/api/keys?id=${id}`, { method: 'DELETE' });
-    if (res.ok) {
-      setKeyList(prev => prev.filter(k => k.id !== id));
-      alert("Chave excluída com sucesso!");
-    } else {
-      alert("Erro ao excluir a chave.");
+    if (!confirm("Deseja realmente excluir esta chave de acesso?")) return;
+    setLoadingAction(true);
+    try {
+      const res = await fetch(`/api/keys?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setKeyList(prev => prev.filter(k => k.id !== id));
+      }
+    } catch (err) {
+      alert("Erro de conexão.");
+    } finally {
+      setLoadingAction(false);
     }
-  } catch (err) {
-    alert("Erro de conexão.");
-  } finally {
-    setLoadingAction(false);
-  }
-};
+  };
 
   const carregarKeys = useCallback(async () => {
     const res = await fetch('/api/keys');
@@ -163,18 +153,15 @@ const gerenciarSolicitacao = async (requestId, action) => {
       carregarRoles();
       carregarCrafts();
       carregarSolicitacoes();
-       const corPrimaria = session?.user?.colorPrimary || "#d4a91c";
-    const corDestaque = session?.user?.colorAccent || "#f1c40f";
+      
+      const corPrimaria = session?.user?.colorPrimary || "#d4a91c";
+      const corDestaque = session?.user?.colorAccent || "#f1c40f";
 
-    console.log("Cores carregadas:", { corPrimaria, corDestaque });
-
-    const root = document.documentElement;
-    root.style.setProperty('--cor-primaria', corPrimaria);
-    root.style.setProperty('--cor-destaque', corDestaque);
-    
-    // Versões com transparência para o background dos itens ativos
-    root.style.setProperty('--cor-primaria-bg', `${corPrimaria}1A`); 
-    root.style.setProperty('--cor-destaque-bg', `${corDestaque}1A`);
+      const root = document.documentElement;
+      root.style.setProperty('--cor-primaria', corPrimaria);
+      root.style.setProperty('--cor-destaque', corDestaque);
+      root.style.setProperty('--cor-primaria-bg', `${corPrimaria}1A`); 
+      root.style.setProperty('--cor-destaque-bg', `${corDestaque}1A`);
     }
   }, [session, carregarKeys, carregarEquipe, carregarRoles, carregarCrafts]);
 
@@ -188,7 +175,6 @@ const gerenciarSolicitacao = async (requestId, action) => {
       script.onload = () => { if (window.app) window.app.init(); };
       document.body.appendChild(script);
       refreshData();
-
     }
   }, [status, session, router, refreshData]);
 
@@ -201,7 +187,6 @@ const gerenciarSolicitacao = async (requestId, action) => {
 
   const mudarRoleUsuario = async (userId, roleId) => {
     const novoRoleId = roleId === "" ? null : roleId;
-
     setTeamList(prev => prev.map(m => {
       if (m.id === userId) {
         const dadosCargo = roleList.find(r => String(r.id) === String(roleId));
@@ -237,7 +222,6 @@ const gerenciarSolicitacao = async (requestId, action) => {
       const res = await fetch(`/api/equipe?id=${id}`, { method: 'DELETE' });
       if (res.ok) {
         setTeamList(prev => prev.filter(m => m.id !== id));
-        alert("Membro removido!");
       }
     } catch (err) { 
       alert("Erro ao deletar."); 
@@ -289,7 +273,8 @@ const gerenciarSolicitacao = async (requestId, action) => {
   if (status === "loading") {
     return (
       <div style={styles.loadingScreen}>
-        Sincronizando Sistema...
+        <div style={styles.loaderSpinner}></div>
+        <span>Sincronizando Sistema...</span>
       </div>
     );
   }
@@ -299,9 +284,12 @@ const gerenciarSolicitacao = async (requestId, action) => {
       <nav style={styles.sidebar}>
         <div style={styles.sidebarTopSection}>
           <div style={styles.sidebarHeader} id="nomeEmpresaDisplay">
-            {session?.user?.companyName || "Açougue Winchester"}
-          </div>
-          
+  <div style={styles.companyLogo}>
+    {(session?.user?.companyName || "SafraLog").charAt(0).toUpperCase()}
+  </div>
+  {session?.user?.companyName || "SafraLog"}
+</div>
+          <div style={styles.navLabel}>PRINCIPAL</div>
           <div style={styles.navMenu}>
             <div 
               style={{...styles.navItem, ...(activeTab === "tab-vendas" ? styles.navItemActive : {})}} 
@@ -314,7 +302,7 @@ const gerenciarSolicitacao = async (requestId, action) => {
               style={{...styles.navItem, ...(activeTab === "tab-pedidos" ? styles.navItemActive : {})}} 
               onClick={() => showTab("tab-pedidos", "Pedidos")}
             >
-              <ClipboardList size={18} /> Pedidos
+              <ClipboardList size={18} /> Histórico de Pedidos
             </div>
 
             {(session?.user?.isOwner || session?.user?.role?.canCraft) && (
@@ -336,6 +324,7 @@ const gerenciarSolicitacao = async (requestId, action) => {
 
             {session?.user?.isOwner && (
               <>
+                <div style={styles.navLabel}>GESTAO</div>
                 <div 
                   style={{...styles.navItem, ...(activeTab === "tab-roles" ? styles.navItemActive : {})}} 
                   onClick={() => showTab("tab-roles", "Gerenciar Cargos")}
@@ -352,27 +341,23 @@ const gerenciarSolicitacao = async (requestId, action) => {
             )}
 
             {session?.user?.name === "admin" && (
-  <>
-    <div style={{ padding: '10px 20px 5px', fontSize: '0.65rem', color: '#444', fontWeight: 'bold' }}>ADMINISTRAÇÃO</div>
-    <div 
-      style={{...styles.navItem, ...(activeTab === "tab-master" ? styles.navItemMasterActive : styles.navItemMaster)}} 
-      onClick={() => showTab("tab-master", "Master Keys")}
-    >
-      <Key size={18} /> Master Keys
-    </div>
-  </>
-)}
+              <>
+                <div style={styles.navLabel}>ADMINISTRAÇÃO</div>
+                <div 
+                  style={{...styles.navItemMaster, ...(activeTab === "tab-master" ? styles.navItemMasterActive : {})}} 
+                  onClick={() => showTab("tab-master", "Master Keys")}
+                >
+                  <Key size={18} /> Master Keys
+                </div>
+              </>
+            )}
           </div>
         </div>
 
         <div style={styles.userInfoBar}>
           <div style={styles.userDetails}>
-            <span style={styles.userName}>
-              <User size={14} style={{ marginRight: '4px' }} /> 
-              {session?.user?.name}
-            </span>
+            <span style={styles.userName}>{session?.user?.name}</span>
             <span style={styles.userRole}>
-              <Medal size={12} style={{ marginRight: '4px' }} /> 
               {session?.user?.role?.name || (session?.user?.isOwner ? "Dono" : "Funcionário")}
             </span>
           </div>
@@ -384,96 +369,142 @@ const gerenciarSolicitacao = async (requestId, action) => {
 
       <main style={styles.mainContent}>
         <header style={styles.mainHeader}>
-          <h2 id="page-title" style={styles.pageTitle}>Nova Encomenda</h2>
+          <div>
+            <span style={styles.breadcrumb}>Dashboard / {activeTab.replace("tab-", "")}</span>
+            <h2 id="page-title" style={styles.pageTitle}>Nova Encomenda</h2>
+          </div>
           <button style={styles.btnSettings} onClick={() => window.toggleModal(true)}>
             <Settings size={20} />
           </button>
         </header>
 
-        <div id="tab-vendas" style={{...styles.pageContent, display: activeTab === "tab-vendas" ? "block" : "none"}}>
+        {/* Tab Vendas */}
+        <div id="tab-vendas" style={{...styles.pageContent, display: activeTab === "tab-vendas" ? "flex" : "none"}}>
           <div style={styles.card}>
-            <h3 style={styles.cardHeader}><ShoppingCart size={20} /> Nova Encomenda</h3>
-            <div style={styles.inputGroup}>
-              <input type="text" id="clienteNome" placeholder="Nome do Cliente" style={styles.baseInput} />
-              <input type="text" id="clientePombo" placeholder="Pombo (Contato)" style={styles.baseInput} />
+            <div style={styles.cardHeader}>
+              <div style={styles.headerIcon}><ShoppingCart size={18} /></div>
+              <h3>Dados da Encomenda</h3>
             </div>
-            <h3 style={{ ...styles.cardHeader, marginTop: "24px" }}>Produtos</h3>
-            <div style={styles.inputGroup}>
-              <select id="produtoSelect" style={styles.baseInput}></select>
-              <input type="number" id="quantidadeItem" placeholder="Quantidade" style={styles.baseInput} />
+            <div style={styles.grid2Cols}>
+              <div style={styles.inputWrapper}>
+                <label style={styles.labelInput}>Cliente</label>
+                <input type="text" id="clienteNome" placeholder="Nome Completo" style={styles.baseInput} />
+              </div>
+              <div style={styles.inputWrapper}>
+                <label style={styles.labelInput}>Contato</label>
+                <input type="text" id="clientePombo" placeholder="ID/Telefone/Pombo" style={styles.baseInput} />
+              </div>
             </div>
-            <button style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '16px'}} onClick={() => window.app.adicionarItem()}>
-              + Adicionar à Lista
+            
+            <div style={{...styles.divider, margin: '32px 0'}} />
+
+            <div style={styles.cardHeader}>
+              <div style={styles.headerIcon}><Beef size={18} /></div>
+              <h3>Seleção de Produtos</h3>
+            </div>
+            <div style={styles.grid2Cols}>
+              <div style={styles.inputWrapper}>
+                <label style={styles.labelInput}>Produto</label>
+                <select id="produtoSelect" style={styles.baseInput}></select>
+              </div>
+              <div style={styles.inputWrapper}>
+                <label style={styles.labelInput}>Quantidade</label>
+                <input type="number" id="quantidadeItem" placeholder="0" style={styles.baseInput} />
+              </div>
+            </div>
+            <button style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '24px'}} onClick={() => window.app.adicionarItem()}>
+              Adicionar à Lista
             </button>
           </div>
-          <div style={styles.card}>
-            <h3 style={styles.cardHeader}>Resumo</h3>
-            <div id="listaEncomenda" style={{ marginBottom: '16px' }}></div>
-            <button onClick={() => window.app.calcularEncomenda()} style={{...styles.baseButton, ...styles.buttonOutline}}>
-              Finalizar Encomenda
+
+          <div style={{...styles.card, borderTop: '4px solid var(--cor-primaria)'}}>
+            <div style={styles.cardHeader}>
+              <div style={styles.headerIcon}><ClipboardList size={18} /></div>
+              <h3>Resumo do Pedido</h3>
+            </div>
+            <div id="listaEncomenda" style={styles.orderListContainer}></div>
+            <button onClick={() => window.app.calcularEncomenda()} style={{...styles.baseButton, ...styles.buttonOutline, width: '100%'}}>
+              Finalizar e Gerar Recibo
             </button>
           </div>
         </div>
 
+        {/* Tab Pedidos */}
         <div id="tab-pedidos" style={{...styles.pageContent, display: activeTab === "tab-pedidos" ? "block" : "none"}}>
           <div style={styles.card}>
-            <h3 style={styles.cardHeader}><ClipboardList size={20} /> Histórico de Pedidos</h3>
-            <div id="listaPedidosGeral" style={{ color: '#8a8f9c' }}>Carregando pedidos...</div>
+            <div style={styles.cardHeader}>
+              <div style={styles.headerIcon}><ClipboardList size={18} /></div>
+              <h3>Últimas Movimentações</h3>
+            </div>
+            <div id="listaPedidosGeral" style={styles.emptyState}>Carregando registros...</div>
           </div>
         </div>
 
+        {/* Tab Registrar Craft */}
         <div id="tab-registrar" style={{...styles.pageContent, display: activeTab === "tab-registrar" ? "block" : "none"}}>
-          <div style={styles.card}>
-            <h3 style={styles.cardHeader}><Hammer size={20} /> Configurar Nova Receita</h3>
-            <div style={styles.inputGroup}>
-              <input type="text" id="craftNome" placeholder="Nome do Produto" style={styles.baseInput} />
-              <input type="number" id="unidades" placeholder="Qtd. produzida" style={styles.baseInput} />
+          <div style={{...styles.card, maxWidth: '800px'}}>
+            <div style={styles.cardHeader}>
+              <div style={styles.headerIcon}><Hammer size={18} /></div>
+              <h3>Configuração de Receita</h3>
             </div>
-            <div id="areaInsumos" style={{ marginTop: '24px' }}>
-              <h4 style={{ color: '#e6e6e6', marginBottom: '12px', fontSize: '0.9rem' }}>Insumos</h4>
-              <div id="listaInsumosDinamicos" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}></div>
-              <button style={{...styles.baseButton, ...styles.buttonOutline}} onClick={() => window.app.adicionarCampoInsumo()}>
-                + Adicionar Insumo
+            <div style={styles.grid3Cols}>
+              <div style={styles.inputWrapper}>
+                <label style={styles.labelInput}>Nome do Produto</label>
+                <input type="text" id="craftNome" placeholder="Ex: Carne de Sol" style={styles.baseInput} />
+              </div>
+              <div style={styles.inputWrapper}>
+                <label style={styles.labelInput}>Qtd. Produzida</label>
+                <input type="number" id="unidades" placeholder="1" style={styles.baseInput} />
+              </div>
+              <div style={styles.inputWrapper}>
+                <label style={styles.labelInput}>Preço Final</label>
+                <input type="number" id="price" placeholder="$ 0.00" style={styles.baseInput} />
+              </div>
+            </div>
+
+            <div style={styles.insumosSection}>
+              <h4 style={styles.sectionTitle}>Insumos Necessários</h4>
+              <div id="listaInsumosDinamicos" style={styles.dynamicList}></div>
+              <button style={{...styles.baseButton, ...styles.buttonOutline, fontSize: '0.8rem'}} onClick={() => window.app.adicionarCampoInsumo()}>
+                + Novo Insumo
               </button>
             </div>
-            <button style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '24px', width: '100%'}} onClick={() => {
+
+            <button style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '32px', width: '100%'}} onClick={() => {
               window.app.registrarCraft();
-              refreshData()
+              refreshData();
             }}>
-              Salvar Receita
+              Registrar no Catálogo
             </button>
           </div>
         </div>
 
+        {/* Tab Painel de Produção */}
         <div id="tab-producao" style={{...styles.pageContent, display: activeTab === "tab-producao" ? "block" : "none"}}>
           <div style={styles.card}>
-            <h3 style={styles.cardHeader}><Beef size={20} /> Painel de Produção</h3>
-            <p style={{fontSize: '0.85rem', color: '#8a8f9c', marginBottom: '20px'}}>
-              Insira a quantidade que deseja fabricar:
-            </p>
+            <div style={styles.cardHeader}>
+              <div style={styles.headerIcon}><Calculator size={18} /></div>
+              <h3>Planejamento de Produção</h3>
+            </div>
+            <p style={styles.cardSubtitle}>Defina as quantidades para calcular os materiais necessários automaticamente.</p>
             
-            <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+            <div style={styles.producaoGrid}>
               {craftList.map((item) => (
                 <div key={item.id} style={styles.producaoItem}>
                   <div style={{flex: 1}}>
-                    <b style={{color: '#fff', fontSize: '0.95rem'}}>{item.name}</b>
-                    <span style={{display: 'block', fontSize: '0.75rem', color: '#8a8f9c', marginTop: '4px'}}>Unidade: {item.unit}</span>
+                    <div style={styles.producaoItemTitle}>{item.name}</div>
+                    <div style={styles.producaoItemMeta}>Unidade base: {item.unit || 'un'}</div>
                   </div>
                   
                   <input 
                     type="number" 
                     placeholder="0"
-                    min="0"
                     value={producaoQtds[item.id] || ""} 
                     onChange={(e) => handleQtdChange(item.id, e.target.value)}
                     style={styles.producaoInput} 
                   />
 
-                  <button 
-                    onClick={() => window.app.removerReceita(item.id)}
-                    style={styles.btnIconDanger}
-                    title="Excluir Receita"
-                  >
+                  <button onClick={() => window.app.removerReceita(item.id)} style={styles.btnActionDelete}>
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -481,269 +512,237 @@ const gerenciarSolicitacao = async (requestId, action) => {
             </div>
 
             <button 
-              style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '24px', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px'}} 
+              style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '24px', width: '100%'}} 
               onClick={() => window.app.calcularMateriais(craftList, producaoQtds)}
             >
-              <Calculator size={18} /> Calcular Materiais Necessários
+              <Calculator size={18} /> Calcular Totais de Coleta
             </button>
           </div>
 
-          <div id="materiaisResultado" style={{...styles.card, display: 'none', marginTop: '20px', borderLeft: '4px solid #d4a91c'}}>
-            <h4 style={{color: '#d4a91c', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px'}}>
-              <Package size={18} /> Total para Coleta:
-            </h4>
-            <div id="listaInsumosSomados"></div>
+          <div id="materiaisResultado" style={styles.resultCard}>
+            <div style={styles.cardHeader}>
+              <div style={{...styles.headerIcon, background: 'rgba(0,255,144,0.1)', color: '#00ff90'}}><Package size={18} /></div>
+              <h3 style={{color: '#00ff90'}}>Lista de Materiais</h3>
+            </div>
+            <div id="listaInsumosSomados" style={styles.resultList}></div>
           </div>
         </div>
 
+        {/* Tab Equipe */}
         <div id="tab-equipe" style={{...styles.pageContent, display: activeTab === "tab-equipe" ? "block" : "none"}}>
+          {hireRequests.length > 0 && (
+            <div style={{...styles.card, border: '1px solid var(--cor-destaque-bg)'}}>
+              <div style={styles.cardHeader}>
+                <div style={{...styles.headerIcon, background: 'var(--cor-destaque-bg)', color: 'var(--cor-destaque)'}}><UserPlus size={18} /></div>
+                <h3 style={{color: 'var(--cor-destaque)'}}>Solicitações Pendentes</h3>
+              </div>
+              <div style={styles.teamList}>
+                {hireRequests.map(req => (
+                  <div key={req.id} style={styles.teamItem}>
+                    <div style={{flex: 1}}>
+                      <div style={styles.memberName}>{req.user.username}</div>
+                      <div style={styles.memberMeta}>Deseja ingressar na empresa</div>
+                    </div>
+                    <div style={styles.actionGroup}>
+                      <button style={styles.btnApprove} onClick={() => gerenciarSolicitacao(req.id, 'approve')}>Aprovar</button>
+                      <button style={styles.btnReject} onClick={() => gerenciarSolicitacao(req.id, 'reject')}>Rejeitar</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div style={styles.card}>
-            <h3 style={styles.cardHeader}><Users size={20} /> Gestão de Colaboradores</h3>
+            <div style={styles.cardHeader}>
+              <div style={styles.headerIcon}><Users size={18} /></div>
+              <h3>Colaboradores Ativos</h3>
+            </div>
             <div style={styles.teamList}>
               {teamList.map(m => (
                 <div key={m.id} style={styles.teamItem}>
                   <div style={{flex: 1}}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px'}}>
-                      <b style={{color: '#fff', fontSize: '1rem'}}>{m.name}</b>
-                      <span style={styles.badgeRole}>
-                        {m.role?.name || "Sem Cargo"}
-                      </span>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                      <span style={styles.memberName}>{m.name}</span>
+                      <span style={styles.badgeRole}>{m.role?.name || "Sem Cargo"}</span>
                     </div>
-                    <div>
-                      <span style={{fontSize:'0.7rem', color:'#8a8f9c', display:'block', marginBottom:'6px', fontWeight:'600'}}>ALTERAR CARGO:</span>
+                    <div style={{marginTop: '12px'}}>
                       <select 
                         style={styles.roleSelect}
                         value={String(m.roleId ?? "")} 
                         onChange={(e) => mudarRoleUsuario(m.id, e.target.value)}
                       >
-                        <option value="">🚫 Sem Cargo</option>
+                        <option value="">🚫 Remover Cargo</option>
                         {roleList.map(role => (
                           <option key={role.id} value={String(role.id)}>{role.name}</option>
                         ))}
                       </select>
                     </div>
                   </div>
-                  <button 
-                    style={{...styles.baseButton, ...styles.buttonDangerGhost}}
-                    onClick={() => removerMembro(m.id)}
-                    disabled={loadingAction}
-                  >
-                    REMOVER
+                  <button style={styles.btnActionDelete} onClick={() => removerMembro(m.id)} disabled={loadingAction}>
+                    <Trash2 size={18} />
                   </button>
                 </div>
               ))}
             </div>
           </div>
-          <div style={{...styles.card, marginBottom: '20px', border: '1px solid #f1c40f44'}}>
-  <h3 style={{...styles.cardHeader, color: '#f1c40f'}}>
-    <UserPlus size={20} /> Solicitações de Entrada
-  </h3>
-  <div style={styles.teamList}>
-    {hireRequests.length === 0 && (
-      <p style={{color: '#8a8f9c', padding: '10px'}}>Nenhuma solicitação pendente.</p>
-    )}
-    {hireRequests.map(req => (
-      <div key={req.id} style={{...styles.teamItem, borderLeft: '3px solid #f1c40f'}}>
-        <div style={{flex: 1}}>
-          <b style={{color: '#fff'}}>{req.user.username}</b>
-          <span style={{display:'block', fontSize:'0.75rem', color:'#8a8f9c'}}>Solicitou entrada na sua empresa</span>
-        </div>
-        <div style={{display: 'flex', gap: '10px'}}>
-          <button 
-            style={{...styles.baseButton, background: '#2ecc71', color: '#fff', padding: '8px 15px'}}
-            onClick={() => gerenciarSolicitacao(req.id, 'approve')}
-          >
-            APROVAR
-          </button>
-          <button 
-            style={{...styles.baseButton, background: '#e74c3c', color: '#fff', padding: '8px 15px'}}
-            onClick={() => gerenciarSolicitacao(req.id, 'reject')}
-          >
-            REJEITAR
-          </button>
-        </div>
-      </div>
-    ))}
-  </div>
-</div>
         </div>
 
-        <div id="tab-roles" style={{...styles.pageContent, display: activeTab === "tab-roles" ? "block" : "none"}}>
-          <div style={styles.gridContainer}>
-            
-            <div style={{...styles.card, flex: 1, height: 'fit-content'}}>
-              <h3 style={styles.cardHeader}><Shield size={20} /> Criar Novo Cargo</h3>
-              <div style={{ marginBottom: '20px' }}>
-                <label style={styles.labelInput}>Nome do Cargo</label>
+        {/* Tab Roles */}
+        <div id="tab-roles" style={{...styles.pageContent, display: activeTab === "tab-roles" ? "flex" : "none"}}>
+          <div style={styles.grid2Cols}>
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <div style={styles.headerIcon}><Shield size={18} /></div>
+                <h3>Criar Novo Cargo</h3>
+              </div>
+              <div style={styles.inputWrapper}>
+                <label style={styles.labelInput}>Identificação do Cargo</label>
                 <input 
                   type="text" 
-                  placeholder="Ex: Gerente, Açougueiro..." 
+                  placeholder="Ex: Supervisor" 
                   style={styles.baseInput}
                   value={newRole.name} 
                   onChange={(e) => setNewRole({ ...newRole, name: e.target.value })} 
                 />
               </div>
 
-              <label style={styles.labelInput}>Permissões de Acesso</label>
+              <label style={{...styles.labelInput, marginTop: '24px'}}>Permissões de Módulo</label>
               <div style={styles.checkboxGrid}>
-                <label style={styles.checkLabel}>
-                  <input type="checkbox" checked={newRole.canVendas} onChange={(e) => setNewRole({ ...newRole, canVendas: e.target.checked })} />
-                  <ShoppingCart size={14} /> <span>Vendas</span>
-                </label>
-                <label style={styles.checkLabel}>
-                  <input type="checkbox" checked={newRole.canCraft} onChange={(e) => setNewRole({ ...newRole, canCraft: e.target.checked })} />
-                  <Hammer size={14} /> <span>Craft</span>
-                </label>
-                <label style={styles.checkLabel}>
-                  <input type="checkbox" checked={newRole.canLogs} onChange={(e) => setNewRole({ ...newRole, canLogs: e.target.checked })} />
-                  <ClipboardList size={14} /> <span>Logs</span>
-                </label>
-                <label style={styles.checkLabel}>
-                  <input type="checkbox" checked={newRole.canAdmin} onChange={(e) => setNewRole({ ...newRole, canAdmin: e.target.checked })} />
-                  <Key size={14} /> <span>Admin</span>
-                </label>
+                {['canVendas', 'canCraft', 'canLogs', 'canAdmin'].map((perm) => (
+                   <label key={perm} style={styles.checkLabel}>
+                    <input 
+                      type="checkbox" 
+                      checked={newRole[perm]} 
+                      onChange={(e) => setNewRole({ ...newRole, [perm]: e.target.checked })} 
+                    />
+                    <span>{perm.replace('can', '')}</span>
+                  </label>
+                ))}
               </div>
 
               <button style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '24px', width: '100%'}} onClick={criarRole} disabled={loadingAction}>
-                {loadingAction ? "Processando..." : "Salvar Cargo"}
+                {loadingAction ? "Salvando..." : "Cadastrar Cargo"}
               </button>
             </div>
 
-            <div style={{...styles.card, flex: 1.2}}>
-              <h3 style={styles.cardHeader}><ClipboardList size={20} /> Cargos Ativos</h3>
-              <div style={styles.roleListScroll}>
-                {roleList.length > 0 ? (
-                  roleList.map((role) => (
-                    <div key={role.id} style={styles.roleCard}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                        <div>
-                          <span style={styles.roleName}>{role.name}</span>
-                          <span style={styles.memberCount}><Users size={12} style={{marginRight: '4px'}} />{role._count?.users || 0}</span>
-                        </div>
-                        
-                        <button 
-                          onClick={() => window.app.excluirRole(role.id, role.name)}
-                          style={styles.btnIconDangerGhost}
-                          title="Excluir Cargo"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-
-                      <div style={styles.permissionBadgeContainer}>
-                        {role.canVendas && <span style={styles.permBadge}><ShoppingCart size={10} /> Vendas</span>}
-                        {role.canCraft && <span style={styles.permBadge}><Hammer size={10} /> Craft</span>}
-                        {role.canLogs && <span style={styles.permBadge}><ClipboardList size={10} /> Logs</span>}
-                        {role.canAdmin && <span style={{ ...styles.permBadge, borderColor: '#ff4c4c', color: '#ff4c4c' }}><Key size={10} /> Admin</span>}
-                      </div>
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <div style={styles.headerIcon}><ClipboardList size={18} /></div>
+                <h3>Cargos e Hierarquia</h3>
+              </div>
+              <div style={styles.roleContainer}>
+                {roleList.map((role) => (
+                  <div key={role.id} style={styles.roleCard}>
+                    <div style={styles.roleCardTop}>
+                      <span style={styles.roleTitle}><span style={{
+                        color: 'var(--cor-primaria, #d4a91c)'
+                      }}>Role Name:</span> {role.name}</span>
+                      <button onClick={() => window.app.excluirRole(role.id, role.name)} style={styles.btnActionDelete}>
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-                  ))
-                ) : (
-                  <div style={styles.emptyState}>Nenhum cargo cadastrado ainda.</div>
-                )}
+                    <div style={styles.permList}>
+                      {role.canVendas && <span style={styles.tinyBadge}>Vendas</span>}
+                      {role.canCraft && <span style={styles.tinyBadge}>Produção</span>}
+                      {role.canAdmin && <span style={{...styles.tinyBadge, borderColor: '#ff4c4c', border: 'solid 1px #ff4c4c', color: '#ff4c4c'}}>Admin</span>}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
+        {/* Tab Admin Master */}
         {session?.user?.name === "admin" && (
           <div id="tab-master" style={{...styles.pageContent, display: activeTab === "tab-master" ? "block" : "none"}}>
-            <div style={{...styles.card, border: '1px solid #f1c40f44'}}>
-              <h3 style={{color: '#f1c40f', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px'}}>
-                <Key size={20} /> Gerador de Access Keys
-              </h3>
-              <p style={{marginBottom: '20px', color: '#8a8f9c', fontSize: '0.9rem'}}>Defina a validade da licença para o novo cliente.</p>
-              
-              <div style={styles.masterForm}>
-                <input 
-                  type="number" 
-                  placeholder="Ex: 30 dias" 
-                  value={newKeyDays} 
-                  onChange={(e) => setNewKeyDays(e.target.value)}
-                  style={styles.masterInput}
-                />
-                <button 
-                  style={styles.masterBtn} 
-                  onClick={gerarNovaKey}
-                  disabled={loadingKey}
-                >
-                  {loadingKey ? "Gerando..." : "Gerar Chave"}
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <div style={{...styles.headerIcon, background: 'var(--cor-destaque-bg)', color: 'var(--cor-destaque)'}}><Key size={18} /></div>
+                <h3>Gerador de Licenças</h3>
+              </div>
+              <div style={styles.masterActionRow}>
+                <div style={{flex: 1}}>
+                  <label style={styles.labelInput}>Validade (Dias)</label>
+                  <input 
+                    type="number" 
+                    value={newKeyDays} 
+                    onChange={(e) => setNewKeyDays(e.target.value)}
+                    style={styles.baseInput}
+                  />
+                </div>
+                <button style={{...styles.btnMaster, ...styles.baseButton}} onClick={gerarNovaKey} disabled={loadingKey}>
+                  Gerar Access Key
                 </button>
               </div>
             </div>
 
-            <div style={styles.card}>
-  <h3 style={styles.cardHeader}><ClipboardList size={20} /> Últimas Keys Geradas</h3>
-  <div style={styles.keyList}>
-    {keyList.map((k) => (
-      <div key={k.id} style={{...styles.keyItem, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <code style={{color: '#f1c40f', fontSize: '1.1rem', letterSpacing: '1px'}}>{k.key}</code>
-          <span style={{display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: '600', color: k.used ? '#ff4c4c' : '#00ff90'}}>
-            {k.used ? <XCircle size={14} /> : <CheckCircle size={14} />}
-            {k.used ? "USADA" : `DISPONÍVEL (${k.days} dias)`}
-          </span>
-        </div>
-        
-        <button 
-          onClick={() => excluirKey(k.id)}
-          style={styles.btnIconDangerGhost}
-          title="Excluir Chave"
-          disabled={loadingAction}
-        >
-          <Trash2 size={18} />
-        </button>
-      </div>
-    ))}
-    {keyList.length === 0 && <p style={{color: '#8a8f9c'}}>Nenhuma chave encontrada no banco.</p>}
-  </div>
-</div>
+            <div style={{...styles.card, marginTop: '24px'}}>
+               <div style={styles.cardHeader}>
+                <div style={styles.headerIcon}><ClipboardList size={18} /></div>
+                <h3>Keys no Banco</h3>
+              </div>
+              <div style={styles.keyList}>
+                {keyList.map((k) => (
+                  <div key={k.id} style={styles.keyItem}>
+                    <code style={styles.keyCode}>{k.key}</code>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+                      <span style={{...styles.statusBadge, color: k.used ? '#ff4c4c' : '#00ff90'}}>
+                        {k.used ? "USADA" : `${k.days} DIAS`}
+                      </span>
+                      <button onClick={() => excluirKey(k.id)} style={styles.btnActionDelete}>
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </main>
 
+      {/* Modal Settings */}
       <div className="modal-overlay" id="modalSettings" style={{ display: 'none' }}>
-        <div className="modal" style={styles.modalBody}>
-          <h3 style={{...styles.cardHeader, marginBottom: '24px'}}><Settings size={20} /> Configurações do Painel</h3>
+        <div style={styles.modalBody}>
+          <div style={styles.cardHeader}>
+            <div style={styles.headerIcon}><Settings size={18} /></div>
+            <h3>Preferências do Sistema</h3>
+          </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label style={styles.labelInput}>Nome da Empresa:</label>
-              <input type="text" id="nomeEmpresaInput" style={styles.baseInput} disabled={session?.user?.name !== 'admin'} />
+          <div style={styles.modalForm}>
+            <div style={styles.inputWrapper}>
+              <label style={styles.labelInput}>Nome da Empresa</label>
+              <input type="text" id="nomeEmpresaInput" style={styles.baseInput} disabled={session?.user.isOwner !== true} />
             </div>
             
-            <div>
-              <label style={styles.labelInput}>Webhook Encomendas:</label>
-              <input type="text" id="webhookVendasInput" placeholder="URL para pedidos" style={styles.baseInput} disabled={session?.user?.name !== 'admin'} />
+            <div style={styles.inputWrapper}>
+              <label style={styles.labelInput}>Webhook Encomendas</label>
+              <input type="text" id="webhookVendasInput" style={styles.baseInput} disabled={session?.user.isOwner !== true} />
             </div>
-
             <div>
               <label style={styles.labelInput}>Webhook Logs:</label>
-              <input type="text" id="webhookLogsInput" placeholder="URL para registros internos" style={styles.baseInput} disabled={session?.user?.name !== 'admin'} />
+              <input type="text" id="webhookLogsInput" placeholder="URL para registros internos" style={styles.baseInput} disabled={session?.user.isOwner !== true} />
             </div>
-            
-            <div style={{display: 'flex', gap: '16px'}}>
-              <div style={{flex: 1}}>
-                  <label style={styles.labelInput}>Cor Primária:</label>
-                  <input 
-  type="color" 
-  id="colorPrimary" 
-  defaultValue={session?.user?.colorPrimary || "#d4a91c"} // <-- Adicionar isso
-  style={{...styles.baseInput, padding: '4px', height: '40px'}} 
-  disabled={session?.user?.name !== 'admin'}
-/> </div>
-              <div style={{flex: 1}}>
-                  <label style={styles.labelInput}>Cor Destaque:</label>
-                  <input type="color" id="colorAccent" style={{...styles.baseInput, padding: '4px', height: '40px'}} disabled={session?.user?.name !== 'admin'}/>
+
+            <div style={styles.grid2Cols}>
+              <div style={styles.inputWrapper}>
+                <label style={styles.labelInput}>Cor Principal</label>
+                <input type="color" id="colorPrimary" defaultValue={session?.user?.colorPrimary || "#d4a91c"} style={styles.colorPicker} disabled={session?.user.isOwner !== true} />
+              </div>
+              <div style={styles.inputWrapper}>
+                <label style={styles.labelInput}>Cor Accent</label>
+                <input type="color" id="colorAccent" style={styles.colorPicker} disabled={session?.user.isOwner !== true} />
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-              <button style={{...styles.baseButton, ...styles.buttonPrimary, flex: 1}} onClick={handleSalvarConfig} disabled={session?.user?.name !== 'admin'}>
-                Salvar
+            <div style={styles.modalActions}>
+              <button style={{...styles.baseButton, ...styles.buttonPrimary, flex: 1}} onClick={handleSalvarConfig} disabled={session?.user.isOwner !== true}>
+                Salvar Alterações
               </button>
               <button style={{...styles.baseButton, ...styles.buttonOutline, flex: 1}} onClick={() => toggleModal(false)}>
-                Fechar
+                Cancelar
               </button>
             </div>
           </div>
@@ -754,43 +753,74 @@ const gerenciarSolicitacao = async (requestId, action) => {
 }
 
 const styles = {
+  // CONFIGURAÇÃO BASE
   layoutWrapper: {
     display: 'flex',
     height: '100vh',
     width: '100vw',
-    backgroundColor: '#0a0b10',
-    color: '#e6e6e6',
-    fontFamily: 'Inter, system-ui, sans-serif'
+    backgroundColor: '#07080a',
+    color: '#d1d5db',
+    fontFamily: '"Inter", sans-serif',
+    overflow: 'hidden'
   },
   loadingScreen: {
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     height: '100vh',
     width: '100vw',
-    backgroundColor: '#0a0b10',
+    backgroundColor: '#07080a',
     color: '#d4a91c',
-    fontSize: '1.2rem',
-    fontWeight: '600'
+    gap: '20px'
   },
+  loaderSpinner: {
+    width: '40px',
+    height: '40px',
+    border: '3px solid rgba(212,169,28,0.1)',
+    borderTop: '3px solid #d4a91c',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite'
+  },
+
+  // SIDEBAR
   sidebar: {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
     width: '280px',
-    background: '#0f1117',
-    borderRight: '1px solid #1f2430'
-  },
-  sidebarTopSection: {
-    padding: '20px 0'
+    background: '#0d0f14',
+    borderRight: '1px solid #1c1f26',
+    padding: '24px 0'
   },
   sidebarHeader: {
-    padding: '0 20px 24px 20px',
-    fontSize: '1.1rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '0 24px 32px',
+    fontSize: '0.95rem',
     fontWeight: '700',
     color: '#fff',
-    borderBottom: '1px solid #1f2430',
-    marginBottom: '16px'
+    letterSpacing: '-0.02em'
+  },
+  companyLogo: {
+    width: '32px',
+    height: '32px',
+    background: 'var(--cor-primaria, #d4a91c)',
+    color: '#000',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: '900'
+  },
+  navLabel: {
+    padding: '0 24px 12px',
+    fontSize: '0.65rem',
+    color: '#4b5563',
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: '0.1em'
   },
   navMenu: {
     display: 'flex',
@@ -802,430 +832,344 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    padding: '12px 16px',
-    borderRadius: '8px',
-    color: '#8a8f9c',
-    fontSize: '0.9rem',
+    padding: '10px 16px',
+    borderRadius: '10px',
+    color: '#9ca3af',
+    fontSize: '0.875rem',
     fontWeight: '500',
     cursor: 'pointer',
-    transition: 'all 0.2s ease'
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
   },
   navItemActive: {
-    background: 'var(--cor-primaria-bg, rgba(212, 169, 28, 0.1))',
-    color: 'var(--cor-primaria, #d4a91c)',
-    fontWeight: '600'
-  },
-  navItemMaster: {
-    marginTop: '16px',
-    color: 'var(--cor-destaque, #f1c40f)',
-    borderLeft: '3px solid transparent'
-  },
-  navItemMasterActive: {
-    marginTop: '16px',
-    background: 'var(--cor-destaque-bg, rgba(241, 196, 15, 0.1))',
-    color: 'var(--cor-destaque, #f1c40f)',
-    borderLeft: '3px solid var(--cor-destaque, #f1c40f)',
-    fontWeight: '600'
-  },
-// Procure e ajuste estas chaves no seu const styles:
-
+    background: 'var(--cor-primaria-bg, rgba(212, 169, 28, 0.1))',
+    color: 'var(--cor-primaria, #d4a91c)',
+    fontWeight: '600',
+    boxShadow: 'inset 0 0 0 1px var(--cor-primaria-bg)'
+  },
   navItemMaster: {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    padding: '12px 16px',
-    borderRadius: '8px',
-    fontSize: '0.9rem',
+    padding: '10px 16px',
+    borderRadius: '10px',
+    color: '#9ca3af',
+    fontSize: '0.875rem',
     fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    marginTop: '16px',
-    color: '#f1c40f', // Amarelo fixo (não usa variável)
-    borderLeft: '3px solid transparent'
+    cursor: 'pointer'
   },
-
   navItemMasterActive: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '12px 16px',
-    borderRadius: '8px',
-    fontSize: '0.9rem',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    marginTop: '16px',
-    background: 'rgba(241, 196, 15, 0.1)', // Fundo amarelado fixo
-    color: '#f1c40f',                      // Texto amarelo fixo
-    borderLeft: '3px solid #f1c40f',       // Borda amarela fixa
+    background: 'rgba(241, 196, 15, 0.1)',
+    color: '#f1c40f',
     fontWeight: '600'
   },
+
+  // USER BAR
   userInfoBar: {
-    padding: '16px 20px',
-    background: '#0a0b10',
-    borderTop: '1px solid #1f2430',
+    margin: '0 12px',
+    padding: '16px',
+    background: '#161922',
+    borderRadius: '12px',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    border: '1px solid #1c1f26'
   },
   userDetails: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: '4px'
+    flexDirection: 'column'
   },
   userName: {
-    display: 'flex',
-    alignItems: 'center',
     fontSize: '0.85rem',
     fontWeight: '600',
-    color: '#e6e6e6'
+    color: '#fff'
   },
   userRole: {
-    display: 'flex',
-    alignItems: 'center',
     fontSize: '0.7rem',
     color: 'var(--cor-primaria, #d4a91c)',
     fontWeight: '700',
     textTransform: 'uppercase'
   },
   btnLogoutIcon: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#141720',
-    border: '1px solid #2a2f3c',
-    color: '#ff5a5a',
-    borderRadius: '6px',
-    width: '36px',
-    height: '36px',
+    background: 'rgba(239, 68, 68, 0.1)',
+    border: 'none',
+    color: '#ef4444',
+    padding: '8px',
+    borderRadius: '8px',
     cursor: 'pointer',
     transition: '0.2s'
   },
+
+  // MAIN CONTENT
   mainContent: {
     flex: 1,
+    padding: '40px',
+    overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
-    overflowY: 'auto',
-    padding: '32px 40px'
+    gap: '32px'
   },
   mainHeader: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '32px'
+    alignItems: 'flex-start'
+  },
+  breadcrumb: {
+    fontSize: '0.75rem',
+    color: '#4b5563',
+    textTransform: 'uppercase',
+    fontWeight: '600'
   },
   pageTitle: {
-    fontSize: '1.8rem',
-    fontWeight: '700',
-    color: '#fff'
+    fontSize: '1.75rem',
+    fontWeight: '800',
+    color: '#fff',
+    marginTop: '4px'
   },
   btnSettings: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#12141b',
-    border: '1px solid #1f2430',
-    color: '#8a8f9c',
-    borderRadius: '8px',
-    width: '40px',
-    height: '40px',
+    background: '#161922',
+    border: '1px solid #1c1f26',
+    color: '#9ca3af',
+    padding: '10px',
+    borderRadius: '10px',
     cursor: 'pointer',
-    transition: '0.2s'
+    transition: 'all 0.2s'
   },
+
+  // CARDS & COMPONENTS
   pageContent: {
-    display: 'flex',
     flexDirection: 'column',
-    gap: '24px',
+    gap: '24px'
   },
   card: {
-    background: '#12141b',
-    border: '1px solid #1f2430',
-    borderRadius: '12px',
-    padding: '24px',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.2)'
+    background: '#0d0f14',
+    border: '1px solid #1c1f26',
+    borderRadius: '16px',
+    padding: '32px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
   },
   cardHeader: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
-    fontSize: '1.1rem',
-    marginBottom: '20px',
-    color: '#fff',
-    borderBottom: '1px solid #1f2430',
-    paddingBottom: '12px'
+    gap: '16px',
+    marginBottom: '24px'
   },
-  gridContainer: {
-    display: 'flex',
-    gap: '24px',
-    alignItems: 'flex-start',
-    flexWrap: 'wrap'
-  },
-  inputGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px'
-  },
-  baseInput: {
-    width: '100%',
-    padding: '12px 16px',
-    fontSize: '0.95rem',
-    background: '#0a0b10',
-    border: '1px solid #232734',
-    color: '#e6e6e6',
-    borderRadius: '8px',
-    outline: 'none',
-    transition: 'border-color 0.2s'
-  },
-  labelInput: {
-    fontSize: '0.75rem',
-    color: '#8a8f9c',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    marginBottom: '8px',
-    display: 'block'
-  },
-  baseButton: {
-    padding: '12px 20px',
-    fontSize: '0.95rem',
-    fontWeight: '600',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    border: 'none',
-    transition: 'all 0.2s',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px'
-  },
-  buttonPrimary: {
-    background: 'var(--cor-primaria, #d4a91c)',
-    color: '#0a0b10',
-  },
-  buttonOutline: {
-    background: 'transparent',
-    border: '1px solid #232734',
-    color: '#e6e6e6',
-  },
-  buttonDangerGhost: {
-    background: 'transparent',
-    border: '1px solid #ff4c4c',
-    color: '#ff4c4c',
-    padding: '8px 16px',
-    fontSize: '0.8rem'
-  },
-  btnIconDanger: {
+  headerIcon: {
+    width: '36px',
+    height: '36px',
+    background: 'var(--cor-primaria-bg)',
+    color: 'var(--cor-primaria)',
+    borderRadius: '10px',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    background: 'rgba(255, 76, 76, 0.1)',
-    border: '1px solid #ff4c4c',
-    color: '#ff4c4c',
-    borderRadius: '6px',
-    padding: '10px',
-    cursor: 'pointer',
-    transition: '0.2s'
+    justifyContent: 'center'
   },
-  btnIconDangerGhost: {
-    display: 'flex',
-    alignItems: 'center',
-    background: 'none',
-    border: 'none',
-    color: '#8a8f9c',
-    cursor: 'pointer',
-    padding: '6px',
-    transition: 'color 0.2s'
-  },
-  producaoItem: {
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    padding: '16px', 
-    border: '1px solid #1f2430',
-    background: '#0a0b10',
-    borderRadius: '8px',
-    gap: '16px'
-  },
-  producaoInput: {
-    width: '100px', 
-    padding: '10px', 
-    borderRadius: '6px', 
-    border: '1px solid #232734', 
-    background: '#12141b', 
-    color: '#fff',
-    textAlign: 'center',
-    fontSize: '1rem',
-    outline: 'none'
-  },
-  teamList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px'
-  },
-  teamItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '16px',
-    background: '#0a0b10',
-    borderRadius: '8px',
-    border: '1px solid #1f2430'
-  },
-  badgeRole: {
-    background: 'rgba(212,169,28,0.1)',
-    color: '#d4a91c',
-    padding: '4px 8px',
-    borderRadius: '4px',
-    fontSize: '0.7rem',
-    fontWeight: '600',
-    border: '1px solid rgba(212,169,28,0.2)'
-  },
-  btnIconDangerGhost: {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'transparent',
-  border: 'none',
-  color: '#ff4c4c',
-  padding: '8px',
-  borderRadius: '6px',
-  cursor: 'pointer',
-  transition: '0.2s',
-  opacity: 0.7,
-  '&:hover': {
-    opacity: 1,
-    background: 'rgba(255, 76, 76, 0.1)'
-  }
-},
-keyItem: {
-  padding: '12px',
-  borderBottom: '1px solid #1f2430',
-  // Se for o último item, você pode remover a borda no seu map ou deixar assim
-},
-  roleSelect: {
-    background: '#12141b',
-    border: '1px solid #232734',
-    color: '#e6e6e6',
-    fontSize: '0.85rem',
-    padding: '8px 12px',
-    borderRadius: '6px',
-    width: '100%',
-    maxWidth: '220px',
-    cursor: 'pointer',
-    outline: 'none'
-  },
-  checkboxGrid: {
+  grid2Cols: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
-    gap: '12px',
-    background: '#0a0b10',
-    padding: '16px',
-    borderRadius: '8px',
-    border: '1px solid #1f2430'
+    gap: '20px'
   },
+  grid3Cols: {
+    display: 'grid',
+    gridTemplateColumns: '2fr 1fr 1fr',
+    gap: '20px'
+  },
+  inputWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px'
+  },
+  baseInput: {
+    background: '#161922',
+    border: '1px solid #1c1f26',
+    borderRadius: '10px',
+    padding: '12px 16px',
+    color: '#fff',
+    fontSize: '0.9rem',
+    outline: 'none',
+    transition: 'border-color 0.2s',
+    '&:focus': {
+        borderColor: 'var(--cor-primaria)'
+    }
+  },
+  labelInput: {
+    fontSize: '0.7rem',
+    fontWeight: '700',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em'
+  },
+  baseButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    padding: '14px 24px',
+    borderRadius: '12px',
+    fontWeight: '700',
+    fontSize: '0.875rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    border: 'none'
+  },
+  buttonPrimary: {
+    background: 'var(--cor-primaria, #d4a91c)',
+    color: '#000'
+  },
+  permList: {
+    gap: '10px',
+    display: 'flex',
+
+  },
+  tinyBadge: {
+    background: '#252525',
+    padding: '5px',
+    borderRadius: '5px',
+    paddingLeft: '15px',
+    paddingRight: '15px',
+
+  },
+
+  btnMaster: {
+    background: 'var(--cor-primaria, #d4a91c)',
+    color: '#000'
+  },
+  buttonOutline: {
+    background: 'transparent',
+    border: '1px solid #1c1f26',
+    color: '#9ca3af'
+  },
+  divider: {
+    height: '1px',
+    background: '#1c1f26',
+    width: '100%'
+  },
+
+  // ESPECIFICOS PRODUCAO
+  producaoGrid: {
+    display: 'grid',
+    gap: '12px'
+  },
+  producaoItem: {
+    background: '#161922',
+    padding: '16px 20px',
+    borderRadius: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '20px',
+    border: '1px solid #1c1f26'
+  },
+  producaoItemTitle: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: '0.95rem'
+  },
+  producaoItemMeta: {
+    color: '#6b7280',
+    fontSize: '0.75rem',
+    marginTop: '2px'
+  },
+  producaoInput: {
+    width: '80px',
+    background: '#0d0f14',
+    border: '1px solid #1c1f26',
+    borderRadius: '8px',
+    padding: '8px',
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: '700'
+  },
+  btnActionDelete: {
+    background: 'transparent',
+    color: '#4b5563',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '8px',
+    borderRadius: '8px',
+    transition: '0.2s',
+    '&:hover': {
+        color: '#ef4444',
+        background: 'rgba(239, 68, 68, 0.1)'
+    }
+  },
+
+  // EQUIPE E CARGOS
+  teamList: { display: 'flex', flexDirection: 'column', gap: '12px' },
+  teamItem: {
+    background: '#161922',
+    padding: '20px',
+    borderRadius: '14px',
+    border: '1px solid #1c1f26',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  memberName: { color: '#fff', fontWeight: '600' },
+  badgeRole: {
+    background: 'var(--cor-primaria-bg)',
+    color: 'var(--cor-primaria)',
+    fontSize: '0.65rem',
+    fontWeight: '800',
+    padding: '4px 10px',
+    borderRadius: '20px',
+    textTransform: 'uppercase'
+  },
+  roleSelect: {
+    background: '#0d0f14',
+    border: '1px solid #1c1f26',
+    color: '#fff',
+    padding: '8px 12px',
+    borderRadius: '8px',
+    fontSize: '0.8rem',
+    cursor: 'pointer'
+  },
+  checkboxGrid: {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(4, max-content)',
+  gap: '10px 40px',
+  marginTop: '12px'
+},
   checkLabel: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    color: '#e6e6e6',
-    fontSize: '0.9rem',
+    gap: '10px',
+    fontSize: '0.85rem',
+    color: '#9ca3af',
     cursor: 'pointer'
   },
-  roleListScroll: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    maxHeight: '500px',
-    overflowY: 'auto'
-  },
-  roleCard: {
-    background: '#0a0b10',
-    border: '1px solid #1f2430',
-    borderRadius: '8px',
-    padding: '16px'
-  },
-  roleName: {
-    fontWeight: '600',
-    color: '#d4a91c',
+  
+  // ADMIN
+  keyCode: {
+    fontFamily: 'monospace',
+    color: '#f1c40f',
     fontSize: '1rem',
-    display: 'block',
-    marginBottom: '4px'
-  },
-  memberCount: {
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: '0.8rem',
-    color: '#8a8f9c'
-  },
-  permissionBadgeContainer: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px'
-  },
-  permBadge: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    fontSize: '0.7rem',
-    background: '#12141b',
-    border: '1px solid #232734',
-    padding: '4px 8px',
-    borderRadius: '4px',
-    color: '#8a8f9c'
-  },
-  emptyState: {
-    textAlign: 'center',
-    padding: '40px',
-    color: '#8a8f9c',
-    fontSize: '0.95rem'
-  },
-  masterForm: {
-    display: 'flex',
-    gap: '16px',
-    alignItems: 'center'
-  },
-  masterInput: {
-    flex: '2',
-    padding: '12px 16px',
-    fontSize: '1rem',
-    background: '#0a0b10',
-    border: '1px solid #232734',
-    color: '#fff',
-    borderRadius: '8px',
-    outline: 'none'
-  },
-  masterBtn: {
-    flex: '1',
-    padding: '12px 16px',
-    background: '#f1c40f',
-    color: '#000',
-    fontWeight: '700',
-    fontSize: '0.95rem',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'opacity 0.2s'
-  },
-  keyList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px'
+    letterSpacing: '2px',
+    background: 'rgba(241, 196, 15, 0.05)',
+    padding: '8px 16px',
+    borderRadius: '8px'
   },
   keyItem: {
     display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    background: '#0a0b10',
+    justifyContent: 'space-between',
     padding: '16px',
-    borderRadius: '8px',
-    border: '1px solid #1f2430'
+    borderBottom: '1px solid #1c1f26'
   },
+
+  // MODAL
   modalBody: {
-    background: '#0f1117',
-    border: '1px solid #1f2430',
-    borderRadius: '12px',
-    padding: '32px',
-    width: '100%',
+    background: '#0d0f14',
+    width: '90%',
     maxWidth: '500px',
-    boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+    borderRadius: '24px',
+    padding: '40px',
+    border: '1px solid #1c1f26',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+  },
+  colorPicker: {
+    width: '100%',
+    height: '44px',
+    border: 'none',
+    background: 'transparent',
+    cursor: 'pointer'
   }
 };

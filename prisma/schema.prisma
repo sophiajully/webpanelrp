@@ -83,6 +83,7 @@ model Craft {
   id        String   @id @default(uuid())
   name      String
   unit      String
+  price     Decimal  @default(0.0)
   companyId String
   company   Company  @relation(fields: [companyId], references: [id])
   insumos   String   @default("[]")
