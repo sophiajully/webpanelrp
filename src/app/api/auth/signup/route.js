@@ -31,7 +31,7 @@ export async function POST(req) {
 
       // Transação: Cria empresa, usuário e queima a key
       const result = await prisma.$transaction(async (tx) => {
-        const company = await tx.company.create({ data: { name: companyName } });
+        const company = await tx.company.create({ data: { name: companyName, ownerId: existingUser.id } });
         
         const user = await tx.user.create({
           data: {
