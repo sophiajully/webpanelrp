@@ -21,7 +21,7 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR">
       <body>
         <AuthProvider>
-          <ConsoleWarning /> {/* O aviso rodará apenas no cliente aqui */}
+          {/* <ConsoleWarning /> O aviso rodará apenas no cliente aqui */}
           {children}
         </AuthProvider>
       </body>
