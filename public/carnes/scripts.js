@@ -37,6 +37,103 @@ window.app = {
             this.adicionarCampoInsumo();
         }
     },
+    // --- LÓGICA DO MERCADÃO DA FRONTEIRA (VERSÃO ROBUSTA) ---
+
+    mercadoRawData: [],
+    empresaSelecionadaId: null,
+    carrinhoMercado: [],
+
+    async carregarEmpresasMercado() {
+        try {
+            console.log("Iniciando carga do Mercadão...");
+            const res = await fetch('/api/companies');
+            if (!res.ok) throw new Error("Erro na API de empresas");
+            
+            const companies = await res.json();
+            
+            // Força a captura do ID da sua empresa para garantir que não apareça na lista
+            const minhaEmpresaId = document.body.getAttribute("data-company-id");
+            this.companyId = minhaEmpresaId;
+
+            // Comparação segura convertendo tudo para String (resolve problema de Number vs String)
+            this.mercadoRawData = companies.filter(c => String(c.id) !== String(minhaEmpresaId));
+            
+            console.log("Fornecedores filtrados:", this.mercadoRawData);
+            
+            // Chama a função de renderização
+            this.renderizarCardsEmpresas(this.mercadoRawData);
+        } catch (err) {
+            console.error("Erro ao carregar Mercadão:", err);
+            const container = document.getElementById("gridEmpresasMercado");
+            if (container) container.innerHTML = "<p style='color:red'>Erro ao carregar fornecedores.</p>";
+        }
+    },
+
+    // ESTA É A FUNÇÃO QUE ESTAVA FALTANDO E CAUSAVA O ERRO:
+    renderizarCardsEmpresas(lista) {
+        const container = document.getElementById("gridEmpresasMercado");
+        if (!container) return;
+
+        if (!lista || lista.length === 0) {
+            container.innerHTML = "<p style='color:#666'>Nenhum fornecedor encontrado.</p>";
+            return;
+        }
+
+        container.innerHTML = lista.map(c => `
+            <div id="empresa_card_${c.id}" 
+                 onclick="window.app.selecionarFornecedor('${c.id}')"
+                 style="background:#1c1f26; padding:12px; border-radius:8px; border:1px solid #333; cursor:pointer; transition:0.2s; text-align:center;">
+                <span style="font-weight:bold; color:#fff; font-size:0.85rem">${c.name}</span>
+            </div>
+        `).join('');
+    },
+
+    selecionarFornecedor(companyId) {
+        // Zera o carrinho se mudar de empresa
+        if (String(this.empresaSelecionadaId) !== String(companyId)) {
+            this.carrinhoMercado = [];
+            this.renderizarCarrinhoMercado();
+        }
+
+        this.empresaSelecionadaId = companyId;
+
+        // Atualiza destaque visual dos cards (Comparação segura com String)
+        this.mercadoRawData.forEach(c => {
+            const card = document.getElementById(`empresa_card_${c.id}`);
+            if (card) {
+                constisSelected = String(c.id) === String(companyId);
+                card.style.border = isSelected ? "1px solid #d4a91c" : "1px solid #333";
+                card.style.background = isSelected ? "rgba(212,169,28,0.15)" : "#1c1f26";
+            }
+        });
+
+        const container = document.getElementById("gridProdutosMercado");
+        if (!container) return;
+
+        // Busca a empresa na memória (Comparação segura com String)
+        const empresa = this.mercadoRawData.find(c => String(c.id) === String(companyId));
+
+        if (!empresa || !empresa.crafts || empresa.crafts.length === 0) {
+            container.innerHTML = "<p style='color:#ff4c4c; font-size:0.8rem;'>Esta empresa não possui produtos cadastrados.</p>";
+            return;
+        }
+
+        container.innerHTML = empresa.crafts.map(p => `
+            <div style="background:#1c1f26; padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.05); display:flex; flex-direction:column; gap:8px">
+                <span style="font-weight:bold; color:#e5b95f; font-size:0.9rem">📦 ${p.name}</span>
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                    <span style="color:#00ff90; font-weight:bold; font-size:1.1rem">$ ${parseFloat(p.price).toFixed(2)}</span>
+                    <small style="color:#666">${p.unit}</small>
+                </div>
+                <div style="display:flex; gap: 5px; margin-top: 5px;">
+                    <input type="number" id="qtd_mercado_${p.id}" placeholder="Qtd" min="1" 
+                        style="flex: 1; background:#0a0a0f; border:1px solid #333; color:white; padding:8px; border-radius:4px; font-size:0.8rem;">
+                    <button onclick="window.app.adicionarAoCarrinhoMercado('${p.id}', '${p.name}', ${p.price})" 
+                        style="background:#e5b95f; color:#000; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold;">+</button>
+                </div>
+            </div>
+        `).join('');
+    },
 async calcularEncomenda() {
     const nomeCliente = document.getElementById("clienteNome")?.value;
     const contatoCliente = document.getElementById("clientePombo")?.value;
@@ -260,95 +357,7 @@ async carregarCrafts() {
 
         }
     },
-// --- LÓGICA DO MERCADÃO DA FRONTEIRA (ATUALIZADO) ---
-
-    mercadoRawData: [],
-    empresaSelecionadaId: null,
-    carrinhoMercado: [],
-
-    async carregarEmpresasMercado() {
-        try {
-            // Usa o origin para garantir o caminho correto em produção
-            const res = await fetch(`${window.location.origin}/api/companies`);
-            if (!res.ok) throw new Error("Falha na rede");
-            
-            const companies = await res.json();
-            
-            // Força a atualização do companyId caso o DOM tenha demorado a carregar
-            if (!this.companyId) this.companyId = document.body.getAttribute("data-company-id");
-
-            // Filtro robusto (String) para não mostrar a própria empresa
-            this.mercadoRawData = companies.filter(c => String(c.id) !== String(this.companyId));
-            
-            this.renderizarCardsEmpresas(this.mercadoRawData);
-        } catch (err) {
-            console.error("Erro ao carregar empresas:", err);
-        }
-    },
-
-    // A FUNÇÃO QUE ESTAVA FALTANDO:
-    renderizarCardsEmpresas(lista) {
-        const container = document.getElementById("gridEmpresasMercado");
-        if (!container) return;
-
-        if (lista.length === 0) {
-            container.innerHTML = "<p style='color:#666'>Nenhum fornecedor encontrado.</p>";
-            return;
-        }
-
-        container.innerHTML = lista.map(c => `
-            <div id="empresa_card_${c.id}" 
-                 onclick="window.app.selecionarFornecedor('${c.id}')"
-                 style="background:#1c1f26; padding:12px; border-radius:8px; border:1px solid #333; cursor:pointer; transition:0.2s; text-align:center;">
-                <span style="font-weight:bold; color:#fff; font-size:0.85rem">${c.name}</span>
-            </div>
-        `).join('');
-    },
-
-    selecionarFornecedor(companyId) {
-        if (this.empresaSelecionadaId !== companyId) {
-            this.carrinhoMercado = [];
-            this.renderizarCarrinhoMercado();
-        }
-
-        this.empresaSelecionadaId = companyId;
-
-        // Atualiza destaque visual dos cards
-        this.mercadoRawData.forEach(c => {
-            const card = document.getElementById(`empresa_card_${c.id}`);
-            if (card) {
-                const isSelected = String(c.id) === String(companyId);
-                card.style.border = isSelected ? "1px solid #d4a91c" : "1px solid #333";
-                card.style.background = isSelected ? "rgba(212,169,28,0.15)" : "#1c1f26";
-            }
-        });
-
-        const container = document.getElementById("gridProdutosMercado");
-        if (!container) return;
-
-        const empresa = this.mercadoRawData.find(c => String(c.id) === String(companyId));
-
-        if (!empresa || !empresa.crafts || empresa.crafts.length === 0) {
-            container.innerHTML = "<p style='color:#ff4c4c; font-size:0.8rem;'>Esta empresa não possui produtos cadastrados.</p>";
-            return;
-        }
-
-        container.innerHTML = empresa.crafts.map(p => `
-            <div style="background:#1c1f26; padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.05); display:flex; flex-direction:column; gap:8px">
-                <span style="font-weight:bold; color:#e5b95f; font-size:0.9rem">📦 ${p.name}</span>
-                <div style="display:flex; justify-content:space-between; align-items:center">
-                    <span style="color:#00ff90; font-weight:bold; font-size:1.1rem">$ ${parseFloat(p.price).toFixed(2)}</span>
-                    <small style="color:#666">${p.unit}</small>
-                </div>
-                <div style="display:flex; gap: 5px; margin-top: 5px;">
-                    <input type="number" id="qtd_mercado_${p.id}" placeholder="Qtd" min="1" 
-                        style="flex: 1; background:#0a0a0f; border:1px solid #333; color:white; padding:8px; border-radius:4px; font-size:0.8rem;">
-                    <button onclick="window.app.adicionarAoCarrinhoMercado('${p.id}', '${p.name}', ${p.price})" 
-                        style="background:#e5b95f; color:#000; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold;">+</button>
-                </div>
-            </div>
-        `).join('');
-    },
+    
     adicionarAoCarrinhoMercado(id, nome, preco) {
         const input = document.getElementById(`qtd_mercado_${id}`);
         const qtd = parseInt(input?.value);
