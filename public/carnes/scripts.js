@@ -107,7 +107,6 @@ async calcularEncomenda() {
         alert("Falha ao salvar pedido: " + err.message);
     }
 },
-// ... dentro de window.app ...
 
     async carregarConfig() {
         const companyId = this.companyId
@@ -538,28 +537,6 @@ calcularMateriais(craftList, producaoQtds) {
     });
 
     this.renderizarResultadoProducao(resumoCrafts, totaisMateriais);
-},
-async removerReceita(id) {
-    if (!confirm("⚠️ Excluir permanentemente do banco de dados?")) return;
-
-    try {
-        const res = await fetch(`/api/crafts?id=${id}`, { method: 'DELETE' });
-        if (res.ok) {
-            this.enviarWebhook(this.config.webhookLogs, {
-                title: "🗑️ Receita Removida",
-                color: 0xff4c4c,
-                description: `A receita ID ${id} foi deletada.`,
-                timestamp: new Date().toISOString()
-            });
-            
-            alert("Receita removida!");
-            
-            // Força o recarregamento da página para o React buscar a lista nova do banco
-            window.location.reload(); 
-        }
-    } catch (err) {
-        alert("Erro ao deletar: " + err.message);
-    }
 },
 renderizarResultadoProducao(resumoCrafts, totaisMateriais) {
     const resDiv = document.getElementById("materiaisResultado");
