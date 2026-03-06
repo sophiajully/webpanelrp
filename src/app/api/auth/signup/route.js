@@ -66,7 +66,7 @@ export async function POST(req) {
           password: hashedPassword,
           isOwner: false,
           // Criamos a solicitação de contratação pendente
-          hireRequests: {
+          requests: {
             create: {
               companyId: selectedCompanyId,
               status: "pending"
