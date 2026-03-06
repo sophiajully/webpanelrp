@@ -19,6 +19,30 @@
   }
 }
 
+.page-content {
+  display: none; /* Esconde todas as abas */
+  animation: fadeIn 0.3s ease;
+}
+
+.page-content.active {
+  display: block; /* Mostra apenas a ativa */
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.m-input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  background: #0a0a0f;
+  border: 1px solid #333;
+  color: #fff;
+  border-radius: 6px;
+}
+
 /* Garante que o fundo ocupe tudo e não crie barras de rolagem estranhas */
 html, body {
   margin: 0;
