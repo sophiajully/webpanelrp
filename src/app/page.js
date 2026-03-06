@@ -411,7 +411,7 @@ export default function Home() {
     {/* COLUNA ESQUERDA: FORNECEDORES E PRODUTOS */}
     <div style={{display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '85vh', overflowY: 'auto', paddingRight: '10px'}}>
       
-      {/* 1. Lista de Fornecedores */}
+
       <section style={styles.card}>
         <h4 style={{fontSize: '0.9rem', color: '#d4a91c', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px'}}>
           <Users size={16}/> 1. Escolha um Fornecedor
@@ -424,7 +424,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 2. Catálogo de Produtos */}
       <section style={styles.card}>
         <h4 style={{fontSize: '0.9rem', color: '#00ff90', marginBottom: '15px'}}>
           2. Catálogo de Produtos
