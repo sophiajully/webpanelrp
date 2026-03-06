@@ -33,6 +33,29 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Largura da barra de rolagem */
+::-webkit-scrollbar {
+  width: 8px;               /* Para scroll vertical */
+  height: 8px;              /* Para scroll horizontal */
+}
+
+/* Fundo da barra (Track) */
+::-webkit-scrollbar-track {
+  background: #0a0b10;      /* Cor de fundo do layout wrapper */
+}
+
+/* A parte que desliza (Thumb) */
+::-webkit-scrollbar-thumb {
+  background: #1f2430;      /* Uma cor um pouco mais clara que o fundo */
+  border-radius: 10px;      /* Deixa arredondado */
+  border: 2px solid #0a0b10; /* Cria um efeito de margem ao redor do thumb */
+}
+
+/* Quando você passa o mouse no scroll */
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cor-primaria, #d4a91c); /* Muda para a cor da sua empresa */
+}
+
 .m-input {
   width: 100%;
   padding: 10px;

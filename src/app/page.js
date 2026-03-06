@@ -20,7 +20,8 @@ import {
   Package, 
   CheckCircle, 
   XCircle, 
-  Ban 
+  Ban,
+  UserPlus
 } from "lucide-react";
 
 export default function Home() {
@@ -89,7 +90,35 @@ export default function Home() {
       setCraftList(formatados); 
     }
   }, []);
+const [hireRequests, setHireRequests] = useState([]);
 
+// No seu useEffect que carrega a equipe, adicione:
+const carregarSolicitacoes = async () => {
+  const res = await fetch('/api/hire-requests');
+  const data = await res.json();
+  setHireRequests(data);
+};
+
+const gerenciarSolicitacao = async (requestId, action) => {
+  setLoadingAction(true);
+  try {
+    const res = await fetch('/api/hire-requests', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId, action })
+    });
+    
+    if (res.ok) {
+      // Recarrega as duas listas para atualizar a tela
+      carregarSolicitacoes();
+      carregarEquipe(); 
+    }
+  } catch (err) {
+    alert("Erro ao processar solicitação");
+  } finally {
+    setLoadingAction(false);
+  }
+};
   const excluirKey = async (id) => {
   if (!confirm("Deseja realmente excluir esta chave de acesso?")) return;
   
@@ -133,6 +162,7 @@ export default function Home() {
       carregarEquipe();
       carregarRoles();
       carregarCrafts();
+      carregarSolicitacoes();
        const corPrimaria = session?.user?.colorPrimary || "#d4a91c";
     const corDestaque = session?.user?.colorAccent || "#f1c40f";
 
@@ -504,6 +534,38 @@ export default function Home() {
               ))}
             </div>
           </div>
+          <div style={{...styles.card, marginBottom: '20px', border: '1px solid #f1c40f44'}}>
+  <h3 style={{...styles.cardHeader, color: '#f1c40f'}}>
+    <UserPlus size={20} /> Solicitações de Entrada
+  </h3>
+  <div style={styles.teamList}>
+    {hireRequests.length === 0 && (
+      <p style={{color: '#8a8f9c', padding: '10px'}}>Nenhuma solicitação pendente.</p>
+    )}
+    {hireRequests.map(req => (
+      <div key={req.id} style={{...styles.teamItem, borderLeft: '3px solid #f1c40f'}}>
+        <div style={{flex: 1}}>
+          <b style={{color: '#fff'}}>{req.user.username}</b>
+          <span style={{display:'block', fontSize:'0.75rem', color:'#8a8f9c'}}>Solicitou entrada na sua empresa</span>
+        </div>
+        <div style={{display: 'flex', gap: '10px'}}>
+          <button 
+            style={{...styles.baseButton, background: '#2ecc71', color: '#fff', padding: '8px 15px'}}
+            onClick={() => gerenciarSolicitacao(req.id, 'approve')}
+          >
+            APROVAR
+          </button>
+          <button 
+            style={{...styles.baseButton, background: '#e74c3c', color: '#fff', padding: '8px 15px'}}
+            onClick={() => gerenciarSolicitacao(req.id, 'reject')}
+          >
+            REJEITAR
+          </button>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
         </div>
 
         <div id="tab-roles" style={{...styles.pageContent, display: activeTab === "tab-roles" ? "block" : "none"}}>
@@ -872,7 +934,7 @@ const styles = {
   pageContent: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '24px'
+    gap: '24px',
   },
   card: {
     background: '#12141b',
