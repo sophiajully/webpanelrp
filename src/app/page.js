@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { Image as ImageIcon } from "lucide-react";
 import { 
   ShoppingCart, 
   ClipboardList, 
@@ -22,7 +23,8 @@ import {
   XCircle, 
   Ban,
   UserPlus,
-  ChevronRight
+  ChevronRight,
+  Store
 } from "lucide-react";
 
 export default function Home() {
@@ -37,6 +39,17 @@ export default function Home() {
   const [teamList, setTeamList] = useState([]);
   const [roleList, setRoleList] = useState([]);
   const [keyList, setKeyList] = useState([]);
+ const [cartazData, setCartazData] = useState({
+  titulo: 'PROCURA-SE',
+  subtitulo: 'NEGOCIOS & PROPRIEDADES',
+  fazenda: '',
+  dono: '',
+  pombo: '',
+  servicos: 'GADO • CAVALOS • COLHEITA',
+  rodape: 'REGISTRADO NO DEPARTAMENTO DE AGRICULTURA',
+  selo: 'ORIGINAL',
+  data: 'ESTABELECIDO EM 1899'
+});
   const [loadingAction, setLoadingAction] = useState(false);
   const [newRole, setNewRole] = useState({
     name: "", canVendas: true, canCraft: true, canLogs: false, canAdmin: false
@@ -297,6 +310,12 @@ export default function Home() {
             >
               <ShoppingCart size={18} /> Nova Encomenda
             </div>
+            <div 
+              style={{...styles.navItem, ...(activeTab === "tab-cartaz" ? styles.navItemActive : {})}} 
+              onClick={() => showTab("tab-cartaz", "CARTAZ")}
+            >
+              <ImageIcon size={18} /> Cartaz
+            </div>
             
             <div 
               style={{...styles.navItem, ...(activeTab === "tab-pedidos" ? styles.navItemActive : {})}} 
@@ -322,9 +341,17 @@ export default function Home() {
               </>
             )}
 
+            
+
             {session?.user?.isOwner && (
               <>
                 <div style={styles.navLabel}>GESTAO</div>
+                <div 
+              style={{...styles.navItem, ...(activeTab === "tab-mercado" ? styles.navItemActive : {})}} 
+              onClick={() => showTab("tab-mercado", "Mercadão da Fronteira")}
+            >
+              <Store size={18} /> Mercadão
+            </div>
                 <div 
                   style={{...styles.navItem, ...(activeTab === "tab-roles" ? styles.navItemActive : {})}} 
                   onClick={() => showTab("tab-roles", "Gerenciar Cargos")}
@@ -378,6 +405,253 @@ export default function Home() {
           </button>
         </header>
 
+  <div id="tab-mercado" style={{...styles.pageContent, display: activeTab === "tab-mercado" ? "block" : "none"}}>
+  <div style={styles.card}>
+    <div style={styles.cardHeader}>
+      <div style={{...styles.headerIcon, background: 'rgba(212,169,28,0.1)', color: '#d4a91c'}}><Package size={18} /></div>
+      <h3>Mercadão da Fronteira</h3>
+    </div>
+    
+    <div style={{...styles.grid2Cols, marginTop: '20px', gap: '20px'}}>
+      
+      {/* Lado Esquerdo: Lista de Empresas e Catálogo */}
+      <div style={{display: 'flex', flexDirection: 'column', gap: '25px'}}>
+        
+        {/* Step 1: Grid de Empresas */}
+        <div>
+          <h4 style={{fontSize: '0.9rem', color: '#d4a91c', marginBottom: '10px'}}>1. Escolha um Fornecedor</h4>
+          <div id="gridEmpresasMercado" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px'}}>
+             <p style={{color: '#666', fontSize: '0.8rem'}}>Carregando fornecedores...</p>
+             {/* Os cards das empresas vão entrar aqui dinamicamente */}
+          </div>
+        </div>
+
+        {/* Step 2: Grid de Produtos da Empresa Selecionada */}
+        <div>
+          <h4 style={{fontSize: '0.9rem', color: '#00ff90', marginBottom: '10px'}}>2. Catálogo de Produtos</h4>
+          <div id="gridProdutosMercado" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px'}}>
+             <p style={{color: '#666', fontSize: '0.8rem'}}>Selecione um fornecedor acima para ver o catálogo...</p>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Lado Direito: Carrinho / Ordem de Compra */}
+      <div style={{background: '#161922', padding: '20px', borderRadius: '12px', border: '1px dashed #3d2b1f', height: 'fit-content'}}>
+        <h4 style={{fontSize: '0.8rem', color: '#d4a91c', marginBottom: '10px'}}>ORDEM DE COMPRA</h4>
+        <div id="itensCarrinhoMercado" style={{minHeight: '50px', fontSize: '0.8rem', marginBottom: '15px'}}>
+          <span style={{color: '#4b5563'}}>Nenhum item selecionado...</span>
+        </div>
+        <button 
+            style={{...styles.baseButton, ...styles.buttonPrimary, width: '100%', background: '#d4a91c', color: '#000'}}
+            onClick={() => window.app.enviarPropostaMercado()}
+        >
+          Enviar Proposta Comercial
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+{/* TAB CARTAZ CUSTOM */}
+<div id="tab-cartaz" style={{...styles.pageContent, display: activeTab === "tab-cartaz" ? "block" : "none"}}>
+  <div style={{...styles.grid2Cols, gap: '24px', alignItems: 'flex-start'}}>
+    
+    {/* Formulário de Configuração */}
+    <div style={{...styles.card, margin: 0}}>
+      <div style={styles.cardHeader}>
+        <div style={styles.headerIcon}><ImageIcon size={18} /></div>
+        <h3>Gerador de Cartaz 1899</h3>
+      </div>
+      
+      <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
+        {/* Título Principal */}
+        <div style={styles.inputWrapper}>
+          <label style={styles.labelInput}>Título do Cartaz</label>
+          <input 
+            type="text" 
+            placeholder="Ex: PROCURA-SE ou VENDE-SE" 
+            style={styles.baseInput}
+            value={cartazData.titulo || ''}
+            onChange={(e) => setCartazData({...cartazData, titulo: e.target.value})}
+          />
+        </div>
+
+        <div style={styles.inputWrapper}>
+          <label style={styles.labelInput}>Subtítulo</label>
+          <input 
+            type="text" 
+            placeholder="Ex: NEGOCIOS & PROPRIEDADES" 
+            style={styles.baseInput}
+            value={cartazData.subtitulo || ''}
+            onChange={(e) => setCartazData({...cartazData, subtitulo: e.target.value})}
+          />
+        </div>
+
+        <div style={styles.grid2Cols}>
+          <div style={styles.inputWrapper}>
+            <label style={styles.labelInput}>Fazenda / Empresa</label>
+            <input 
+              type="text" 
+              style={styles.baseInput}
+              value={cartazData.fazenda || ''}
+              onChange={(e) => setCartazData({...cartazData, fazenda: e.target.value})}
+            />
+          </div>
+          <div style={styles.inputWrapper}>
+            <label style={styles.labelInput}>Proprietário</label>
+            <input 
+              type="text" 
+              style={styles.baseInput}
+              value={cartazData.dono || ''}
+              onChange={(e) => setCartazData({...cartazData, dono: e.target.value})}
+            />
+          </div>
+        </div>
+
+        <div style={styles.inputWrapper}>
+          <label style={styles.labelInput}>Contato</label>
+          <input 
+            type="text" 
+            style={styles.baseInput}
+            value={cartazData.pombo || ''}
+            onChange={(e) => setCartazData({...cartazData, pombo: e.target.value})}
+          />
+        </div>
+
+        <div style={styles.inputWrapper}>
+          <label style={styles.labelInput}>Serviços (Separados por •)</label>
+          <input 
+            type="text" 
+            placeholder="GADO • CAVALOS • COLHEITA"
+            style={styles.baseInput}
+            value={cartazData.servicos || ''}
+            onChange={(e) => setCartazData({...cartazData, servicos: e.target.value})}
+          />
+        </div>
+
+        <div style={styles.grid2Cols}>
+          <div style={styles.inputWrapper}>
+            <label style={styles.labelInput}>Data/Época</label>
+            <input 
+              type="text" 
+              placeholder="ESTABELECIDO EM 1899"
+              style={styles.baseInput}
+              value={cartazData.data || ''}
+              onChange={(e) => setCartazData({...cartazData, data: e.target.value})}
+            />
+          </div>
+          <div style={styles.inputWrapper}>
+            <label style={styles.labelInput}>Texto do Selo</label>
+            <input 
+              type="text" 
+              placeholder="ORIGINAL"
+              style={styles.baseInput}
+              value={cartazData.selo || ''}
+              onChange={(e) => setCartazData({...cartazData, selo: e.target.value})}
+            />
+          </div>
+        </div>
+
+        <div style={styles.inputWrapper}>
+          <label style={styles.labelInput}>Texto de Rodapé (Legal)</label>
+          <input 
+            type="text" 
+            style={styles.baseInput}
+            value={cartazData.rodape || ''}
+            onChange={(e) => setCartazData({...cartazData, rodape: e.target.value})}
+          />
+        </div>
+
+        <button 
+          style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '10px'}}
+          onClick={() => {
+            const params = new URLSearchParams({
+              titulo: cartazData.titulo || 'PROCURA-SE',
+              subtitulo: cartazData.subtitulo || 'NEGOCIOS & PROPRIEDADES',
+              fazenda: cartazData.fazenda || 'VALE DO SERENO',
+              dono: cartazData.dono || 'ARTHUR MORGAN',
+              pombo: cartazData.pombo || 'CORREIO CENTRAL',
+              servicos: cartazData.servicos || 'GADO • CAVALOS • COLHEITA',
+              rodape: cartazData.rodape || 'REGISTRADO NO DEPARTAMENTO DE AGRICULTURA',
+              selo: cartazData.selo || 'ORIGINAL',
+              data: cartazData.data || 'ESTABELECIDO EM 1899'
+            });
+            window.open(`/api/cartaz?${params.toString()}`, '_blank');
+          }}
+        >
+          Gerar e Baixar Imagem (.PNG)
+        </button>
+      </div>
+    </div>
+
+    {/* Live Preview Estilizado */}
+    <div style={{
+      ...styles.card, 
+      margin: 0, 
+      background: '#e6d5b8', 
+      color: '#3d2b1f', 
+      minHeight: '650px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      border: '15px solid #3d2b1f',
+      padding: '30px',
+      position: 'relative',
+      fontFamily: 'serif'
+    }}>
+      <div style={{
+        position: 'absolute', top: '5px', left: '5px', right: '5px', bottom: '5px',
+        border: '1px solid #3d2b1f', pointerEvents: 'none'
+      }} />
+      
+      <p style={{fontSize: '0.6rem', letterSpacing: '2px', margin: '10px 0'}}>{cartazData.data || "ESTABELECIDO EM 1899"}</p>
+      
+      <h2 style={{fontSize: '2.5rem', margin: '5px 0', textTransform: 'uppercase', textAlign: 'center'}}>
+        {cartazData.titulo || "PROCURA-SE"}
+      </h2>
+
+      <div style={{background: '#3d2b1f', color: '#e6d5b8', padding: '5px 15px', fontSize: '0.7rem', marginBottom: '30px'}}>
+        {cartazData.subtitulo || "NEGOCIOS & PROPRIEDADES"}
+      </div>
+
+      <div style={{width: '100%', textAlign: 'center', marginBottom: '20px'}}>
+        <p style={{fontSize: '0.5rem', fontWeight: 'bold', margin: 0}}>NOME DA PROPRIEDADE</p>
+        <p style={{fontSize: '1.4rem', margin: '5px 0', borderBottom: '1px solid #3d2b1f', borderTop: '1px solid #3d2b1f', padding: '5px 0'}}>
+            {cartazData.fazenda || "---"}
+        </p>
+      </div>
+
+      <div style={{display: 'flex', width: '100%', justifyContent: 'space-between', marginBottom: '30px'}}>
+        <div style={{width: '45%'}}>
+            <p style={{fontSize: '0.4rem', fontWeight: 'bold', margin: 0}}>RESPONSAVEL</p>
+            <p style={{fontSize: '0.8rem', borderBottom: '1px solid #3d2b1f'}}>{cartazData.dono || "---"}</p>
+        </div>
+        <div style={{width: '45%'}}>
+            <p style={{fontSize: '0.4rem', fontWeight: 'bold', margin: 0}}>CONTATO</p>
+            <p style={{fontSize: '0.8rem', borderBottom: '1px solid #3d2b1f'}}>{cartazData.pombo || "---"}</p>
+        </div>
+      </div>
+
+      <div style={{marginTop: 'auto', textAlign: 'center', width: '100%'}}>
+        <p style={{fontSize: '0.8rem', fontWeight: 'bold', letterSpacing: '2px'}}>* {cartazData.servicos || "GADO • CAVALOS • COLHEITA"} *</p>
+        <p style={{fontSize: '0.45rem', borderTop: '1px solid #3d2b1f', paddingTop: '10px', fontStyle: 'italic'}}>
+            {cartazData.rodape || "REGISTRADO NO DEPARTAMENTO DE AGRICULTURA"}
+        </p>
+      </div>
+
+      {/* Selo Visual */}
+      <div style={{
+        position: 'absolute', bottom: '20px', right: '20px', width: '50px', height: '50px',
+        border: '1px solid #3d2b1f', borderRadius: '50%', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', fontSize: '0.4rem', transform: 'rotate(-15deg)', opacity: 0.5, fontWeight: 'bold'
+      }}>
+        {cartazData.selo || "ORIGINAL"}
+      </div>
+    </div>
+
+  </div>
+</div>
         {/* Tab Vendas */}
         <div id="tab-vendas" style={{...styles.pageContent, display: activeTab === "tab-vendas" ? "flex" : "none"}}>
           <div style={styles.card}>

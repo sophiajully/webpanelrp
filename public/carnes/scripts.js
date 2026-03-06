@@ -19,6 +19,8 @@ window.app = {
         this.carregarCrafts();
         this.aplicarTema();
         this.renderizarPedidos();
+
+        this.carregarEmpresasMercado();
         
         // Listeners seguros para os inputs de cor
         const cp = document.getElementById("colorPrimary");
@@ -256,6 +258,197 @@ async carregarCrafts() {
 
         }
     },
+// --- LÓGICA DO MERCANTÃO DA FRONTEIRA ---
+
+    mercadoRawData: [],
+    empresaSelecionadaId: null,
+    carrinhoMercado: [],
+
+    // 1. Carrega todas as empresas (com seus crafts inclusos via API)
+    async carregarEmpresasMercado() {
+        try {
+            // Nota: certifique-se que sua rota '/api/companies' no backend
+            // faz a busca com "include: { crafts: true }" no Prisma.
+            const res = await fetch('/api/companies');
+            const companies = await res.json();
+
+// Filtra a lista mantendo apenas as empresas que têm um ID diferente da sua
+this.mercadoRawData = companies.filter(c => c.id !== this.companyId);
+
+console.log('RAW DATA', this.mercadoRawData)
+
+            const container = document.getElementById("gridEmpresasMercado");
+            if (!container) return;
+
+            if (companies.length === 0) {
+                container.innerHTML = "<p style='color:#666'>Nenhum fornecedor encontrado no momento.</p>";
+                return;
+            }
+
+            // Renderiza os cards das empresas
+            container.innerHTML = companies.filter(c => c.id !== this.companyId).map(c => `
+                <div id="empresa_card_${c.id}" 
+                     onclick="window.app.selecionarFornecedor('${c.id}')"
+                     style="background:#1c1f26; padding:12px; border-radius:8px; border:1px solid #333; cursor:pointer; transition:0.2s; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                    <span style="font-weight:bold; color:#fff; font-size:0.85rem">${c.name}</span>
+                </div>
+            `).join('');
+        } catch (err) {
+            console.error("Erro ao carregar empresas do mercado:", err);
+        }
+    },
+
+    // 2. Quando o usuário clica em uma empresa
+    selecionarFornecedor(companyId) {
+        // Se trocou de fornecedor, zera o carrinho para não misturar pedidos
+        if (this.empresaSelecionadaId !== companyId) {
+            this.carrinhoMercado = [];
+            this.renderizarCarrinhoMercado();
+        }
+
+        this.empresaSelecionadaId = companyId;
+
+        // Atualiza a UI para destacar a empresa selecionada
+        this.mercadoRawData.forEach(c => {
+            const card = document.getElementById(`empresa_card_${c.id}`);
+            if (card) {
+                if (c.id === companyId) {
+                    card.style.border = "1px solid #d4a91c";
+                    card.style.background = "rgba(212,169,28,0.15)";
+                } else {
+                    card.style.border = "1px solid #333";
+                    card.style.background = "#1c1f26";
+                }
+            }
+        });
+
+        // Puxa os produtos (crafts) da empresa escolhida
+        const container = document.getElementById("gridProdutosMercado");
+        if (!container) return;
+
+        const empresa = this.mercadoRawData.find(c => c.id === companyId);
+
+        console.log("CRAFTS", empresa)
+
+        if (!empresa || !empresa.crafts || empresa.crafts.length === 0) {
+            container.innerHTML = "<p style='color:#ff4c4c; font-size:0.8rem;'>Esta empresa ainda não cadastrou produtos.</p>";
+            return;
+        }
+
+        // Renderiza o grid de produtos
+        container.innerHTML = empresa.crafts.map(p => `
+            <div style="background:#1c1f26; padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.05); display:flex; flex-direction:column; gap:8px">
+                <span style="font-weight:bold; color:#e5b95f; font-size:0.9rem">📦 ${p.name}</span>
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                    <span style="color:#00ff90; font-weight:bold; font-size:1.1rem">$ ${parseFloat(p.price).toFixed(2)}</span>
+                    <small style="color:#666">${p.unit}</small>
+                </div>
+                <div style="display:flex; gap: 5px; margin-top: 5px;">
+                    <input type="number" id="qtd_mercado_${p.id}" placeholder="Qtd" min="1" 
+                        style="flex: 1; background:#0a0a0f; border:1px solid #333; color:white; padding:8px; border-radius:4px; font-size:0.8rem;">
+                    <button onclick="window.app.adicionarAoCarrinhoMercado('${p.id}', '${p.name}', ${p.price})" 
+                        style="background:#e5b95f; color:#000; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold;">
+                        +
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    },
+
+    // 3. Adiciona item ao pedido
+    adicionarAoCarrinhoMercado(id, nome, preco) {
+        const input = document.getElementById(`qtd_mercado_${id}`);
+        const qtd = parseInt(input?.value);
+
+        if (!qtd || qtd <= 0) return alert("Digite uma quantidade válida!");
+
+        // Verifica se já tem no carrinho para só somar a quantidade
+        const itemExistente = this.carrinhoMercado.find(i => i.id === id);
+        if (itemExistente) {
+            itemExistente.qtd += qtd;
+        } else {
+            this.carrinhoMercado.push({ id, nome, preco, qtd });
+        }
+        
+        this.renderizarCarrinhoMercado();
+        if (input) input.value = "";
+    },
+
+    // 4. Renderiza o carrinho lateral
+    renderizarCarrinhoMercado() {
+        const container = document.getElementById("itensCarrinhoMercado");
+        if (!container) return;
+
+        if (this.carrinhoMercado.length === 0) {
+            container.innerHTML = '<span style="color: #4b5563;">Nenhum item selecionado...</span>';
+            return;
+        }
+
+        const total = this.carrinhoMercado.reduce((acc, item) => acc + (item.preco * item.qtd), 0);
+
+        container.innerHTML = this.carrinhoMercado.map((item, index) => `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; background:rgba(255,255,255,0.03); padding:8px; border-radius:6px; border: 1px solid rgba(255,255,255,0.05)">
+                <div style="display:flex; flex-direction:column">
+                    <span style="font-size:0.85rem; color:#eee">${item.nome}</span>
+                    <span style="font-size:0.7rem; color:#666">x${item.qtd} - $${(item.preco * item.qtd).toFixed(2)}</span>
+                </div>
+                <button onclick="window.app.removerDoCarrinhoMercado(${index})" style="background:none; border:none; color:#ff4c4c; cursor:pointer; font-weight:bold; padding:5px">✕</button>
+            </div>
+        `).join('') + `
+            <div style="margin-top:15px; border-top:1px dashed #3d2b1f; padding-top:10px; display:flex; justify-content:space-between; align-items:center">
+                <span style="color:#d4a91c; font-size:0.8rem; font-weight:bold">TOTAL:</span>
+                <span style="color:#00ff90; font-weight:bold; font-size:1.1rem">$ ${total.toFixed(2)}</span>
+            </div>
+        `;
+    },
+
+    removerDoCarrinhoMercado(index) {
+        this.carrinhoMercado.splice(index, 1);
+        this.renderizarCarrinhoMercado();
+    },
+
+    // 5. Finaliza a Encomenda
+    async enviarPropostaMercado() {
+        if (this.carrinhoMercado.length === 0 || !this.empresaSelecionadaId) {
+            return alert("O carrinho está vazio ou nenhuma empresa foi selecionada!");
+        }
+
+        const empresaAlvo = this.mercadoRawData.find(c => c.id === this.empresaSelecionadaId);
+        console.log("EMPRESA ALVO", empresaAlvo)
+        const total = this.carrinhoMercado.reduce((acc, item) => acc + (item.preco * item.qtd), 0);
+        const itensTexto = this.carrinhoMercado.map(i => `🔸 **${i.nome}** (x${i.qtd}) - $${(i.preco * i.qtd).toFixed(2)}`).join('\n');
+
+        try {
+            // Envia o Webhook (se a empresa alvo tiver configurado)
+            if (empresaAlvo.webhookVendas) {
+                await this.enviarWebhook(empresaAlvo.webhookVendas, {
+            title: "Nova Proposta Comercial Recebida!",
+            color:  0xd4a91c,
+            fields: [
+                { name: "👤 Cliente", value: this.config.nomeEmpresa, inline: true },
+                { name: "🕊️ Contato", value: this.config.nomeEmpresa || "Não informado", inline: true },
+                { name: "💰 Valor total", value: `$ ${total.toFixed(2)}` },
+                { name: "📝 Itens da Encomenda", value: itensTexto },
+                
+            ],
+            footer: { text: `SafraLog` },
+            timestamp: new Date().toISOString()
+        });
+            } else {
+                console.warn("A empresa destino não possui webhook cadastrado.");
+            }
+
+            // Opcional: Aqui você pode disparar também um POST para a sua api/pedidos para salvar no banco o pedido na aba de quem vai VENDER
+            
+            alert("Proposta comercial enviada com sucesso para " + empresaAlvo.name + "!");
+            this.carrinhoMercado = [];
+            this.renderizarCarrinhoMercado();
+            
+        } catch (err) {
+            alert("Erro ao enviar proposta comercial.");
+        }
+    },
+    // --- FIM DA LÓGICA DO MERCANTÃO ---
 
     async registrarCraft() {
         const nome = document.getElementById("craftNome")?.value;
