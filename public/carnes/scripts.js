@@ -750,7 +750,7 @@ Object.assign(window.app, {
 
     renderizarCardsEmpresas(lista) {
         const container = document.getElementById("gridEmpresasMercado");
-        if (!container) return;
+        if (!container) return console.log("CONTAINER NAO ECONTRADO ", container)
 
         if (!lista || lista.length === 0) {
             container.innerHTML = "<p style='color:#666'>Nenhum fornecedor disponível.</p>";

@@ -421,7 +421,6 @@ export default function Home() {
             gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', 
             gap: '12px'
         }}>
-           {/* Cards gerados pelo scripts.js */}
         </div>
       </section>
 
