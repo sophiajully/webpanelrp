@@ -1,0 +1,78 @@
+
+
+generator client {
+  provider      = "prisma-client-js"
+  engineType = "library"
+  output        = "../node_modules/.prisma/client"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"] 
+}
+
+datasource db {
+  provider = "cockroachdb"
+}
+
+model User {
+  id             String    @id @default(uuid())
+  username       String    @unique
+  password       String
+  isOwner        Boolean   @default(false)
+  
+  // Controle de Key (Apenas para Donos)
+  accessKey      String?   
+  expiresAt      DateTime? 
+
+  // Relações
+  companyId      String?
+  company        Company?  @relation(fields: [companyId], references: [id])
+  roleId         String?
+  role           Role?     @relation(fields: [roleId], references: [id])
+  
+  requests       HireRequest[]
+}
+
+model Company {
+  id            String   @id @default(uuid())
+  name          String
+  ownerId       String   @unique
+  webhookVendas String?
+  webhookLogs   String?
+  
+  colorPrimary  String   @default("#8b0000")
+  colorAccent   String   @default("#ff4c4c")
+
+  users         User[]
+  roles         Role[]
+  hireRequests  HireRequest[]
+}
+
+model Role {
+  id        String   @id @default(uuid())
+  name      String
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  
+  canVendas  Boolean @default(true)
+  canCraft   Boolean @default(true)
+  canLogs    Boolean @default(false)
+  canAdmin   Boolean @default(false)
+
+  users     User[]
+}
+
+model HireRequest {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  status    String   @default("pending") // pending, approved, rejected
+}
+
+model AccessKey {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  days      Int      @default(30)
+  used      Boolean  @default(false)
+  usedBy    String?  // ID do usuário que usou
+  createdAt DateTime @default(now())
+}
