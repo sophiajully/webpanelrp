@@ -405,7 +405,6 @@ export default function Home() {
           </button>
         </header>
 
- // No seu arquivo page.js, ajuste o JSX da tab-mercado:
 <div id="tab-mercado" style={{...styles.pageContent, display: activeTab === "tab-mercado" ? "block" : "none"}}>
   <div style={{...styles.grid2Cols, gap: '25px', alignItems: 'flex-start'}}>
     
