@@ -405,50 +405,65 @@ export default function Home() {
           </button>
         </header>
 
-  <div id="tab-mercado" style={{...styles.pageContent, display: activeTab === "tab-mercado" ? "block" : "none"}}>
-  <div style={styles.card}>
-    <div style={styles.cardHeader}>
-      <div style={{...styles.headerIcon, background: 'rgba(212,169,28,0.1)', color: '#d4a91c'}}><Package size={18} /></div>
-      <h3>Mercadão da Fronteira</h3>
-    </div>
+ // No seu arquivo page.js, ajuste o JSX da tab-mercado:
+<div id="tab-mercado" style={{...styles.pageContent, display: activeTab === "tab-mercado" ? "block" : "none"}}>
+  <div style={{...styles.grid2Cols, gap: '25px', alignItems: 'flex-start'}}>
     
-    <div style={{...styles.grid2Cols, marginTop: '20px', gap: '20px'}}>
+    {/* COLUNA ESQUERDA: FORNECEDORES E PRODUTOS */}
+    <div style={{display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '85vh', overflowY: 'auto', paddingRight: '10px'}}>
       
-      {/* Lado Esquerdo: Lista de Empresas e Catálogo */}
-      <div style={{display: 'flex', flexDirection: 'column', gap: '25px'}}>
-        
-        {/* Step 1: Grid de Empresas */}
-        <div>
-          <h4 style={{fontSize: '0.9rem', color: '#d4a91c', marginBottom: '10px'}}>1. Escolha um Fornecedor</h4>
-          <div id="gridEmpresasMercado" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px'}}>
-             <p style={{color: '#666', fontSize: '0.8rem'}}>Carregando fornecedores...</p>
-             {/* Os cards das empresas vão entrar aqui dinamicamente */}
-          </div>
+      {/* 1. Lista de Fornecedores */}
+      <section style={styles.card}>
+        <h4 style={{fontSize: '0.9rem', color: '#d4a91c', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+          <Users size={16}/> 1. Escolha um Fornecedor
+        </h4>
+        <div id="gridEmpresasMercado" style={{
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', 
+            gap: '12px'
+        }}>
+           {/* Cards gerados pelo scripts.js */}
         </div>
+      </section>
 
-        {/* Step 2: Grid de Produtos da Empresa Selecionada */}
-        <div>
-          <h4 style={{fontSize: '0.9rem', color: '#00ff90', marginBottom: '10px'}}>2. Catálogo de Produtos</h4>
-          <div id="gridProdutosMercado" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px'}}>
-             <p style={{color: '#666', fontSize: '0.8rem'}}>Selecione um fornecedor acima para ver o catálogo...</p>
-          </div>
+      {/* 2. Catálogo de Produtos */}
+      <section style={styles.card}>
+        <h4 style={{fontSize: '0.9rem', color: '#00ff90', marginBottom: '15px'}}>
+          2. Catálogo de Produtos
+        </h4>
+        <div id="gridProdutosMercado" style={{
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', 
+            gap: '15px'
+        }}>
+           {/* Cards de produtos gerados pelo scripts.js */}
         </div>
+      </section>
+    </div>
 
+    {/* COLUNA DIREITA: CARRINHO (STICKY) */}
+    <div style={{
+        position: 'sticky', 
+        top: '20px', 
+        background: '#161922', 
+        padding: '25px', 
+        borderRadius: '12px', 
+        border: '1px solid #3d2b1f', 
+        boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+        minWidth: '320px'
+    }}>
+      <h4 style={{fontSize: '0.85rem', color: '#d4a91c', marginBottom: '20px', borderBottom: '1px solid #3d2b1f', paddingBottom: '10px'}}>
+        📝 ORDEM DE COMPRA
+      </h4>
+      <div id="itensCarrinhoMercado" style={{maxHeight: '400px', overflowY: 'auto', marginBottom: '20px'}}>
+        <span style={{color: '#4b5563'}}>Selecione itens ao lado...</span>
       </div>
-
-      {/* Lado Direito: Carrinho / Ordem de Compra */}
-      <div style={{background: '#161922', padding: '20px', borderRadius: '12px', border: '1px dashed #3d2b1f', height: 'fit-content'}}>
-        <h4 style={{fontSize: '0.8rem', color: '#d4a91c', marginBottom: '10px'}}>ORDEM DE COMPRA</h4>
-        <div id="itensCarrinhoMercado" style={{minHeight: '50px', fontSize: '0.8rem', marginBottom: '15px'}}>
-          <span style={{color: '#4b5563'}}>Nenhum item selecionado...</span>
-        </div>
-        <button 
-            style={{...styles.baseButton, ...styles.buttonPrimary, width: '100%', background: '#d4a91c', color: '#000'}}
-            onClick={() => window.app.enviarPropostaMercado()}
-        >
-          Enviar Proposta Comercial
-        </button>
-      </div>
+      <button 
+          style={{...styles.baseButton, ...styles.buttonPrimary, width: '100%', background: '#d4a91c', color: '#000', height: '45px'}}
+          onClick={() => window.app.enviarPropostaMercado()}
+      >
+        Enviar Proposta Comercial
+      </button>
     </div>
 
   </div>
