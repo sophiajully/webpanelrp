@@ -51,13 +51,14 @@ export async function POST(req) {
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   try {
-    const { name, unit, insumos } = await req.json();
+    const { name, unit, insumos, price } = await req.json();
     
     const newCraft = await prisma.craft.create({
       data: {
         name,
         unit: String(unit),
         insumos: JSON.stringify(insumos),
+        price,
         companyId: session.user.companyId // Vincula automaticamente à empresa do usuário
       }
     });
