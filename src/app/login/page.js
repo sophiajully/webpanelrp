@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react"; // Importação essencial
+import Image from "next/image";
 
 export default function Login() {
   const [formData, setFormData] = useState({ username: "", password: "" });
@@ -35,9 +36,20 @@ export default function Login() {
     <div className="auth-container" style={styles.container}>
       <form className="auth-card" style={styles.card} onSubmit={handleLogin}>
         <div style={styles.header}>
-            <span style={{fontSize: '2rem'}}>🥩</span>
-            <h2 style={styles.title}>Açougue Winchester</h2>
-            <p style={styles.subtitle}>Painel de Gestão</p>
+          <div style={styles.header}>
+    {/* Substituído o emoji pela imagem do public */}
+    <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'center' }}>
+        <Image 
+            src="/isotipo.png" 
+            alt="SafraLog Logo" 
+            width={60} 
+            height={60} 
+            priority
+        />
+    </div>
+    <h2 style={styles.title}>Safra Log</h2>
+    <p style={styles.subtitle}>Painel de Gestão</p>
+</div>
         </div>
 
         {error && (

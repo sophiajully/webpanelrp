@@ -43,6 +43,8 @@ model Company {
   users         User[]
   roles         Role[]
   hireRequests  HireRequest[]
+  crafts         Craft[]
+  pedidos        Pedido[]
 }
 
 model Role {
@@ -75,4 +77,33 @@ model AccessKey {
   used      Boolean  @default(false)
   usedBy    String?  // ID do usuário que usou
   createdAt DateTime @default(now())
+}
+
+model Craft {
+  id        String   @id @default(uuid())
+  name      String
+  unit      String
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  insumos   String   @default("[]")
+}
+
+model Pedido {
+  id        String   @id @default(uuid())
+  name      String
+  pombo     String
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  produtos  String   @default("[]")
+  status    String   @default("pendente")
+}
+
+model Queue {
+  id        String   @id @default(uuid())
+  taskName  String
+  payload   String   @default("{}")
+  status    String   @default("pending")
+  error     String?  @db.String 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -8,9 +8,13 @@ window.app = {
         colorAccent: "#ff4c4c"
     },
     encomendaAtual: [],
+    companyId: null,
 
     init() {
         console.log("🚜 SafraLog: Sistema Inicializado");
+        this.companyId = document.body.getAttribute("data-company-id");
+        console.log("ID da Empresa carregado:", this.companyId);
+        
         this.carregarConfig();
         this.carregarCrafts();
         this.aplicarTema();
@@ -29,62 +33,97 @@ window.app = {
             this.adicionarCampoInsumo();
         }
     },
-calcularEncomenda() {
-        const nomeCliente = document.getElementById("clienteNome")?.value;
-        const contatoCliente = document.getElementById("clientePombo")?.value;
+async calcularEncomenda() {
+    const nomeCliente = document.getElementById("clienteNome")?.value;
+    const contatoCliente = document.getElementById("clientePombo")?.value;
 
-        if (!nomeCliente || this.encomendaAtual.length === 0) {
-            return alert("Preencha o nome do cliente e adicione pelo menos um item!");
-        }
+    if (!nomeCliente || this.encomendaAtual.length === 0) {
+        return alert("Preencha o nome do cliente e adicione pelo menos um item!");
+    }
 
-        // 1. Calcular Total
-        const total = this.encomendaAtual.reduce((acc, item) => acc + (item.precoUn * item.qtd), 0);
-        const pedidoId = Math.floor(Date.now() / 1000); // Gera um ID baseado no tempo
+    // 1. Calcular Total (apenas para o Webhook, já que a Model Pedido foca nos itens)
+    const total = this.encomendaAtual.reduce((acc, item) => acc + (item.precoUn * item.qtd), 0);
 
-        // 2. Criar objeto do pedido
-        const novoPedido = {
-            id: pedidoId,
-            cliente: nomeCliente,
-            contato: contatoCliente,
-            itens: [...this.encomendaAtual],
-            total: total,
-            status: 'pendente',
-            data: new Date().toLocaleString()
-        };
+    // 2. Preparar os dados para o Banco de Dados (API POST)
+    const dadosPedido = {
+        name: nomeCliente,
+        pombo: contatoCliente || "Não informado",
+        produtos: this.encomendaAtual // O backend vai transformar em String JSON
+    };
 
-        // 3. Salvar no LocalStorage (Histórico de Pedidos)
-        const pedidosSaves = JSON.parse(localStorage.getItem("pedidos_açougue") || "[]");
-        pedidosSaves.unshift(novoPedido); // Adiciona no início da lista
-        localStorage.setItem("pedidos_açougue", JSON.stringify(pedidosSaves));
+    try {
+        // 3. Enviar para a API
+        const response = await fetch('/api/pedidos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dadosPedido)
+        });
+
+        if (!response.ok) throw new Error("Erro ao salvar o pedido no servidor.");
+
+        const pedidoCriado = await response.json();
 
         // 4. Enviar Webhook de Venda para o Discord
         const itensTexto = this.encomendaAtual.map(i => `📦 **${i.nome}** (x${i.qtd})`).join('\n');
-        this.enviarWebhook(this.config.webhookVendas, {
+        
+        await this.enviarWebhook(this.config.webhookVendas, {
             title: "💰 Nova Encomenda Recebida!",
             color: 0x00ff90,
             fields: [
                 { name: "👤 Cliente", value: nomeCliente, inline: true },
                 { name: "🕊️ Contato", value: contatoCliente || "Não informado", inline: true },
                 { name: "📝 Itens", value: itensTexto },
-                { name: "💵 Total", value: `R$ ${total.toLocaleString()}` }
+                { name: "💵 Valor Estimado", value: `R$ ${total.toLocaleString()}` }
             ],
-            footer: { text: `ID do Pedido: ${pedidoId}` },
+            footer: { text: `SafraLog ID: ${pedidoCriado.id}` },
             timestamp: new Date().toISOString()
         });
 
-        // 5. Finalizar e Limpar
-        alert(`Pedido #${pedidoId} finalizado com sucesso!`);
-        this.encomendaAtual = [];
-        document.getElementById("clienteNome").value = "";
-        document.getElementById("clientePombo").value = "";
-        this.atualizarViewEncomenda();
-        this.renderizarPedidos(); // Atualiza a aba de pedidos se ela estiver aberta
-    },
-    carregarConfig() {
-        const saved = JSON.parse(localStorage.getItem("painel_config") || "{}");
-        this.config = { ...this.config, ...saved };
+        // 5. Finalizar e Limpar Interface
+        alert(`Pedido finalizado com sucesso!`);
         
-        // Função auxiliar para evitar repetição de código e erros de null
+        this.encomendaAtual = [];
+        const inputNome = document.getElementById("clienteNome");
+        const inputPombo = document.getElementById("clientePombo");
+        if (inputNome) inputNome.value = "";
+        if (inputPombo) inputPombo.value = "";
+
+        this.atualizarViewEncomenda();
+        this.renderizarPedidos(); // Recarrega a lista da aba de pedidos vindo do banco
+
+    } catch (err) {
+        console.error("Erro na finalização:", err);
+        alert("Falha ao salvar pedido: " + err.message);
+    }
+},
+// ... dentro de window.app ...
+
+    async carregarConfig() {
+        const companyId = this.companyId
+        // 1. Tenta carregar do Prisma via API
+        try {
+            const response = await fetch(`/api/config?companyId=${companyId}`);
+
+            console.log(response)
+            const dbConfig = await response.json();
+
+            if (dbConfig && !dbConfig.error) {
+                this.config = {
+                    webhookVendas: dbConfig.webhookVendas || "",
+                    webhookLogs: dbConfig.webhookLogs || "",
+                    nomeEmpresa: dbConfig.name || "COMPANY_NAME",
+                    colorPrimary: dbConfig.colorPrimary || "#8b0000",
+                    colorAccent: dbConfig.colorAccent || "#ff4c4c"
+                };
+            }
+        } catch (err) {
+            console.error("Erro ao carregar do DB, usando fallback local", err);
+            // Fallback para LocalStorage se a rede falhar
+            const saved = JSON.parse(localStorage.getItem("painel_config") || "{}");
+            this.config = { ...this.config, ...saved };
+        }
+        
+        // Atualiza os inputs na tela
         const setVal = (id, val) => {
             const el = document.getElementById(id);
             if (el) el.value = val || "";
@@ -98,27 +137,46 @@ calcularEncomenda() {
         
         const display = document.getElementById("nomeEmpresaDisplay");
         if (display) display.innerText = this.config.nomeEmpresa;
-    },
-
-    salvarConfig() {
-        const getVal = (id) => document.getElementById(id)?.value || "";
-
-        this.config.webhookVendas = getVal("webhookVendasInput");
-        this.config.webhookLogs = getVal("webhookLogsInput");
-        this.config.nomeEmpresa = getVal("nomeEmpresaInput");
-        this.config.colorPrimary = getVal("colorPrimary");
-        this.config.colorAccent = getVal("colorAccent");
-
-        localStorage.setItem("painel_config", JSON.stringify(this.config));
+        
         this.aplicarTema();
-        
-        const display = document.getElementById("nomeEmpresaDisplay");
-        if (display) display.innerText = this.config.nomeEmpresa;
-        
-        alert("Configurações aplicadas com sucesso!");
-        if (window.toggleModal) window.toggleModal(false);
     },
 
+// scripts.js
+async salvarConfig(companyId) {
+    const getVal = (id) => document.getElementById(id)?.value || "";
+
+    const novaConfig = {
+        companyId: companyId,
+        webhookVendas: getVal("webhookVendasInput"),
+        webhookLogs: getVal("webhookLogsInput"),
+        name: getVal("nomeEmpresaInput"),
+        colorPrimary: getVal("colorPrimary"),
+        colorAccent: getVal("colorAccent")
+    };
+
+    try {
+        const response = await fetch('/api/config', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(novaConfig)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) throw new Error(result.error || "Erro desconhecido");
+
+        alert("Configurações salvas!");
+        if (window.toggleModal) window.toggleModal(false);
+
+        
+        return novaConfig; 
+
+    } catch (err) {
+        console.error("Erro no Fetch:", err);
+        alert(`Erro ao salvar: ${err.message}`);
+        return null;
+    }
+},
     aplicarTema() {
         const root = document.documentElement;
         root.style.setProperty('--primary-red', this.config.colorPrimary);
@@ -133,17 +191,166 @@ calcularEncomenda() {
             btn.style.backgroundColor = this.config.colorAccent;
         });
     },
+    async excluirRole(id, nome) {
+        // Validação básica para não excluir sem querer
+        if (!confirm(`⚠️ Tem certeza que deseja excluir o cargo "${nome}" permanentemente?`)) return;
 
-    async enviarWebhook(url, embed) {
-        if (!url || url.trim() === "") return;
         try {
-            await fetch(url, {
+            // 1. Chamada para a API (seguindo seu padrão de DELETE)
+            const res = await fetch(`/api/roles?id=${id}`, { method: 'DELETE' });
+            
+            if (!res.ok) {
+                const erro = await res.json();
+                throw new Error(erro.error || "Erro ao deletar do servidor");
+            }
+
+            // 2. Enviar Webhook de Log (opcional, seguindo seu padrão)
+            this.enviarWebhook(this.config.webhookLogs, {
+                title: "🛡️ Cargo Removido",
+                color: 0xff4c4c,
+                description: `O cargo **${nome}** foi excluído do sistema por um administrador.`,
+                timestamp: new Date().toISOString()
+            });
+
+            alert("Cargo excluído com sucesso!");
+
+            // 3. Recarregar para atualizar a lista (como você faz em removerReceita)
+            window.carregarRoles()
+
+        } catch (err) {
+            console.error("Erro ao excluir cargo:", err);
+            alert("Falha ao excluir: " + err.message);
+        }
+    },
+async carregarCrafts() {
+        try {
+            const res = await fetch('/api/crafts'); // A rota API já filtra por empresa no servidor
+            const crafts = await res.json();
+            
+            const select = document.getElementById("produtoSelect");
+            if (select) {
+                select.innerHTML = crafts.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+            }
+
+            const listaProd = document.getElementById("listaCrafts");
+            if (listaProd) {
+                listaProd.innerHTML = crafts.map((c) => `
+                    <div class="lista-item" style="background:#0c0c0c; padding:16px; border-radius:12px; margin-bottom:12px; border:1px solid rgba(255,255,255,0.05)">
+                        <div style="display: flex; justify-content: space-between; align-items:center">
+                            <span style="font-weight:bold; color:#e5b95f">🥩 ${c.name}</span>
+                            <button onclick="window.app.removerReceita('${c.id}')" style="background:none; border:none; color:#ff4c4c; cursor:pointer; font-size:0.7rem; font-weight:bold; text-transform:uppercase">excluir</button>
+                        </div>
+                        <div style="font-size:0.75rem; color:#666; margin-top:4px">Unidade: ${c.unit}</div>
+                    </div>
+                `).join('');
+            }
+            // Guarda na memória para uso rápido na venda
+            this.craftsCache = crafts;
+        } catch (err) {
+            console.error("Erro ao carregar receitas:", err);
+        }
+    },
+
+    async registrarCraft() {
+        const nome = document.getElementById("craftNome")?.value;
+        const unidade = document.getElementById("unidades")?.value;
+        
+        if (!nome || !unidade) return alert("Preencha os dados básicos!");
+
+        const insumos = [];
+        document.querySelectorAll(".insumo-row").forEach(row => {
+            const n = row.querySelector(".insumo-nome").value;
+            const q = row.querySelector(".insumo-qtd").value;
+            if (n) insumos.push({ nome: n, qtd: q });
+        });
+
+        try {
+            const res = await fetch('/api/crafts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ embeds: [embed] })
+                body: JSON.stringify({ 
+                    name: nome, 
+                    unit: unidade, 
+                    insumos: insumos // O backend vai stringificar isso
+                })
             });
-        } catch (err) { console.error("Erro Webhook:", err); }
+
+            if (res.ok) {
+                this.enviarWebhook(this.config.webhookLogs, {
+                    title: "🛠️ Nova Receita Registrada",
+                    color: 0xe5b95f,
+                    description: `**Produto:** ${nome}\n**Empresa:** ${this.config.nomeEmpresa}`,
+                    timestamp: new Date().toISOString()
+                });
+                alert("Receita salva com sucesso!");
+                this.limparCamposCraft();
+                this.carregarCrafts();
+            }
+        } catch (err) {
+            alert("Erro ao salvar no banco de dados.");
+        }
     },
+
+    async removerReceita(id) {
+        if (!confirm("⚠️ Excluir permanentemente do banco de dados?")) return;
+
+        try {
+            const res = await fetch(`/api/crafts?id=${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                this.enviarWebhook(this.config.webhookLogs, {
+                    title: "🗑️ Receita Removida",
+                    color: 0xff4c4c,
+                    description: `Uma receita foi deletada do sistema.`,
+                    timestamp: new Date().toISOString()
+                });
+                this.carregarCrafts();
+            }
+        } catch (err) {
+            alert("Erro ao deletar.");
+        }
+    },
+
+    // --- LOGICA DE VENDAS ---
+
+    adicionarItem() {
+        const select = document.getElementById("produtoSelect");
+        const qtdInput = document.getElementById("quantidadeItem");
+        if (!select || !qtdInput) return;
+
+        const nome = select.value;
+        const qtd = parseInt(qtdInput.value);
+        if (!nome || !qtd) return alert("Selecione o item e a quantidade!");
+
+        // Busca no cache que carregamos do banco
+        const produto = this.craftsCache.find(c => c.name === nome);
+        
+        this.encomendaAtual.push({ 
+            nome, 
+            qtd, 
+            precoUn: 0 // Se quiser adicionar preço no model Craft depois, ajuste aqui
+        });
+        
+        this.atualizarViewEncomenda();
+        qtdInput.value = "";
+    },
+    async enviarWebhook(url, embed) {
+    if (!url || url.trim() === "") return;
+
+    try {
+        // Em vez de enviar pro Discord direto, enviamos para a nossa Fila no banco
+        await fetch('/api/queue', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                taskName: "ENVIAR_WEBHOOK_DISCORD",
+                payload: { url, embed }
+            })
+        });
+        console.log("🚀 Webhook agendado na fila com sucesso.");
+    } catch (err) {
+        console.error("Erro ao colocar webhook na fila:", err);
+    }
+},
 
     adicionarCampoInsumo() {
         const container = document.getElementById("listaInsumosDinamicos");
@@ -159,139 +366,273 @@ calcularEncomenda() {
         `;
         container.appendChild(div);
     },
+calcularMateriais() {
+    const inputs = document.querySelectorAll(".input-qtd-producao");
+    const totais = {}; // Objeto para somar tudo (ex: { "Sal": 50, "Carne": 20 })
 
-    registrarCraft() {
-        const nomeEl = document.getElementById("craftNome");
-        const unidadesEl = document.getElementById("unidades");
-        if (!nomeEl || !unidadesEl) return;
+    inputs.forEach(input => {
+        const qtdDesejada = parseInt(input.value) || 0;
+        if (qtdDesejada <= 0) return;
 
-        const nome = nomeEl.value;
-        const unidades = parseFloat(unidadesEl.value) || 1;
-        const preco = parseFloat(document.getElementById("precoVenda")?.value) || 0;
+        // Encontra o item original nos seus dados (precisa estar acessível, ex: window.app.dados.crafts)
+        const craft = window.app.dados.crafts.find(c => c.id === input.dataset.id);
         
-        if (!nome) return alert("Defina o nome do produto!");
+        if (craft && craft.insumos) {
+            const insumos = JSON.parse(craft.insumos); // [ { "item": "Sal", "qtd": 2 }, ... ]
+            
+            insumos.forEach(insumo => {
+                const totalNecessario = insumo.qtd * qtdDesejada;
+                if (totais[insumo.item]) {
+                    totais[insumo.item] += totalNecessario;
+                } else {
+                    totais[insumo.item] = totalNecessario;
+                }
+            });
+        }
+    });
 
-        const insumos = [];
-        document.querySelectorAll(".insumo-row").forEach(row => {
-            const n = row.querySelector(".insumo-nome").value;
-            const q = parseFloat(row.querySelector(".insumo-qtd").value) || 0;
-            if (n) insumos.push({ nome: n, qtd: q });
-        });
+    // Exibir o resultado
+    this.mostrarResultadoProducao(totais);
+},
 
-        const crafts = JSON.parse(localStorage.getItem("crafts") || "[]");
-        crafts.push({ nome, unidades, preco, insumos });
-        localStorage.setItem("crafts", JSON.stringify(crafts));
-
-        this.enviarWebhook(this.config.webhookLogs, {
-            title: "🛠️ Nova Receita SafraLog",
-            color: 0x3498db,
-            description: `**Item:** ${nome}\n**Produz:** ${unidades} unidades`,
-            timestamp: new Date().toISOString()
-        });
-
-        alert("Receita registrada!");
-        this.limparCamposCraft();
-        this.carregarCrafts();
-    },
-
- renderizarPedidos() {
-    const container = document.getElementById("listaPedidosGeral");
-    if (!container) return;
-    const pedidos = JSON.parse(localStorage.getItem("pedidos_açougue") || "[]");
-
-    if (pedidos.length === 0) {
-        container.innerHTML = "<p style='color:#666; padding:20px; text-align:center'>Nenhum pedido no sistema.</p>";
+mostrarResultadoProducao(totais) {
+    const resDiv = document.getElementById("materiaisResultado");
+    const listaUl = document.getElementById("listaInsumosSomados");
+    
+    if (Object.keys(totais).length === 0) {
+        alert("Digite a quantidade de pelo menos um item!");
         return;
     }
 
-    // Estilos base para os botões
-    const baseBtnStyle = "padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.75rem; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px;";
-    const okBtnStyle = `${baseBtnStyle} background: #00ff90; color: #052c1a;`;
-    const delBtnStyle = `${baseBtnStyle} background: rgba(255, 76, 76, 0.1); border: 1px solid #ff4c4c; color: #ff4c4c;`;
+    listaUl.innerHTML = Object.entries(totais)
+        .map(([nome, qtd]) => `
+            <li style="padding: 8px 0; border-bottom: 1px dashed #ddd;">
+                ✅ <strong>${qtd}x</strong> ${nome}
+            </li>
+        `).join('');
 
-    container.innerHTML = pedidos.map(p => `
-        <div class="card" style="border-left: 4px solid ${p.status === 'finalizado' ? '#00ff90' : '#f1c40f'}; margin-bottom: 12px; background: #161625; padding: 15px; border-radius: 10px;">
-            <div style="display:flex; justify-content:space-between; align-items: center;">
-                <strong style="color: #fff; font-size: 1rem;">👤 ${p.cliente}</strong>
-                <span style="font-size:0.7rem; color: #666; background: #0d0d15; padding: 3px 8px; border-radius: 4px;">ID: ${p.id}</span>
-            </div>
-            
-            <div style="margin:12px 0; font-size:0.85rem; color: #bbb; line-height: 1.5;">
-                ${p.itens.map(i => `<span style="color: #eee;">•</span> ${i.nome} <b style="color: var(--accent-red)">(x${i.qtd})</b>`).join('<br>')}
-            </div>
+    resDiv.style.display = 'block';
+    resDiv.scrollIntoView({ behavior: 'smooth' });
+},
+// scripts.js
 
-            <div style="display:flex; gap:10px; margin-top: 10px; border-top: 1px solid #2a2a3a; padding-top: 12px;">
-                ${p.status === 'pendente' 
-                    ? `<button onclick="window.app.alterarStatusPedido(${p.id}, 'finalizado')" style="${okBtnStyle}" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">✅ Concluir</button>` 
-                    : `<span style="color: #00ff90; font-size: 0.75rem; font-weight: bold; display: flex; align-items: center;">✓ FINALIZADO</span>`
+calcularMateriais(craftList, producaoQtds) {
+    console.log("[Calculadora] Iniciando cálculo...", { craftList, producaoQtds });
+
+    const totaisMateriais = {};
+    const resumoCrafts = [];
+
+    if (!craftList || !producaoQtds || Object.keys(producaoQtds).length === 0) {
+        alert("Digite a quantidade desejada antes de calcular!");
+        return;
+    }
+
+    Object.entries(producaoQtds).forEach(([id, qtd]) => {
+        const qtdDesejada = parseInt(qtd);
+        if (isNaN(qtdDesejada) || qtdDesejada <= 0) return;
+
+        const craft = craftList.find(c => String(c.id) === String(id));
+        
+        if (craft) {
+            const unidadesPorCraft = parseInt(craft.unit) || 1;
+            const rodadasDeCraft = Math.ceil(qtdDesejada / unidadesPorCraft);
+
+            resumoCrafts.push({
+                nome: craft.name,
+                rodadas: rodadasDeCraft,
+                totalGerado: rodadasDeCraft * unidadesPorCraft
+            });
+
+            let insumos = [];
+            try {
+                insumos = typeof craft.insumos === 'string' ? JSON.parse(craft.insumos) : craft.insumos;
+            } catch (e) { console.error("Erro JSON:", e); }
+
+            // CORREÇÃO AQUI:
+            insumos.forEach(insumo => {
+                // No seu registrarCraft você usa 'nome', então aqui deve ser 'insumo.nome'
+                const nomeMaterial = insumo.nome || insumo.item; 
+                const qtdUnitaria = Number(insumo.qtd) || 0;
+                const totalNecessario = qtdUnitaria * rodadasDeCraft;
+
+                if (nomeMaterial) {
+                    totaisMateriais[nomeMaterial] = (totaisMateriais[nomeMaterial] || 0) + totalNecessario;
                 }
-                <button onclick="window.app.removerPedido(${p.id})" style="${delBtnStyle}" onmouseover="this.style.background='#ff4c4c'; this.style.color='#fff'" onmouseout="this.style.background='rgba(255, 76, 76, 0.1)'; this.style.color='#ff4c4c'">🗑️ Excluir</button>
-            </div>
+            });
+        }
+    });
+
+    this.renderizarResultadoProducao(resumoCrafts, totaisMateriais);
+},
+async removerReceita(id) {
+    if (!confirm("⚠️ Excluir permanentemente do banco de dados?")) return;
+
+    try {
+        const res = await fetch(`/api/crafts?id=${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            this.enviarWebhook(this.config.webhookLogs, {
+                title: "🗑️ Receita Removida",
+                color: 0xff4c4c,
+                description: `A receita ID ${id} foi deletada.`,
+                timestamp: new Date().toISOString()
+            });
+            
+            alert("Receita removida!");
+            
+            // Força o recarregamento da página para o React buscar a lista nova do banco
+            window.location.reload(); 
+        }
+    } catch (err) {
+        alert("Erro ao deletar: " + err.message);
+    }
+},
+renderizarResultadoProducao(resumoCrafts, totaisMateriais) {
+    const resDiv = document.getElementById("materiaisResultado");
+    const listaUl = document.getElementById("listaInsumosSomados");
+
+    // Criamos um HTML organizado em duas partes: Quantos Crafts fazer e Quais materiais coletar
+    let htmlFinal = `
+        <div style="margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px;">
+            <h5 style="color: #d4a91c; margin-bottom: 8px; font-size: 0.8rem; text-transform: uppercase;">🔨 Execução de Crafts</h5>
+            ${resumoCrafts.map(c => `
+                <div style="display:flex; justify-content:space-between; font-size: 0.85rem; margin-bottom: 4px;">
+                    <span>${c.nome}</span>
+                    <b style="color: #fff;">Fazer ${c.rodadas}x <small style="color: #666;">(Gera ${c.totalGerado})</small></b>
+                </div>
+            `).join('')}
         </div>
-    `).join('');
+        <div>
+            <h5 style="color: #00ff90; margin-bottom: 8px; font-size: 0.8rem; text-transform: uppercase;">📦 Total de Materiais</h5>
+            ${Object.entries(totaisMateriais).map(([nome, qtd]) => `
+                <div style="display:flex; justify-content:space-between; padding: 6px 0; border-bottom: 1px solid #1f2430;">
+                    <span style="color: #bbb;">${nome}</span>
+                    <b style="color: #00ff90;">x${qtd}</b>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    listaUl.innerHTML = htmlFinal;
+    resDiv.style.display = 'block';
+    resDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 },
 
-    carregarCrafts() {
-        const crafts = JSON.parse(localStorage.getItem("crafts") || "[]");
-        const select = document.getElementById("produtoSelect");
-        if (select) {
-            select.innerHTML = crafts.map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+mostrarResultadoProducao(totais) {
+    const resDiv = document.getElementById("materiaisResultado");
+    const listaUl = document.getElementById("listaInsumosSomados");
+    
+    if (Object.keys(totais).length === 0) {
+        alert("Digite a quantidade de pelo menos um item!");
+        return;
+    }
+
+    listaUl.innerHTML = Object.entries(totais)
+        .map(([nome, qtd]) => `
+            <li style="padding: 8px 0; border-bottom: 1px dashed #ddd;">
+                ✅ <strong>${qtd}x</strong> ${nome}
+            </li>
+        `).join('');
+
+    resDiv.style.display = 'block';
+    resDiv.scrollIntoView({ behavior: 'smooth' });
+},
+// --- ATUALIZAÇÃO DO SCRIPTS.JS PARA USAR O BANCO DE DADOS ---
+
+async renderizarPedidos() {
+    const container = document.getElementById("listaPedidosGeral");
+    if (!container) return;
+
+    try {
+        // 1. Busca os dados da API em vez do localStorage
+        const response = await fetch('/api/pedidos');
+        const pedidos = await response.json();
+
+        if (!pedidos || pedidos.length === 0) {
+            container.innerHTML = "<p style='color:#666; padding:20px; text-align:center'>Nenhum pedido no sistema.</p>";
+            return;
         }
 
-        const listaProd = document.getElementById("listaCrafts");
-        if (listaProd) {
-            listaProd.innerHTML = crafts.map((c, i) => `
-                <div class="lista-item" style="background:#1c1c2e; padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid #333">
-                    <div style="display: flex; justify-content: space-between; align-items:center">
-                        <span style="font-weight:bold">${c.nome}</span>
-                        <button onclick="window.app.removerReceita(${i})" style="background:none; border:none; color:#ff4c4c; cursor:pointer">excluir</button>
-                    </div>
-                    <input type="number" class="qtd-desejada" data-index="${i}" placeholder="Quantidade p/ produzir" style="width:100%; margin-top:8px; padding:8px; background:#0a0a0f; border:1px solid #444; color:white; border-radius:4px">
+        const baseBtnStyle = "padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.75rem; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px;";
+        const okBtnStyle = `${baseBtnStyle} background: #00ff90; color: #052c1a;`;
+        const delBtnStyle = `${baseBtnStyle} background: rgba(255, 76, 76, 0.1); border: 1px solid #ff4c4c; color: #ff4c4c;`;
+
+        container.innerHTML = pedidos.map(p => `
+            <div class="card" style="border-left: 4px solid ${p.status === 'finalizado' ? '#00ff90' : '#f1c40f'}; margin-bottom: 12px; background: #161625; padding: 15px; border-radius: 10px;">
+                <div style="display:flex; justify-content:space-between; align-items: center;">
+                    <strong style="color: #fff; font-size: 1rem;">👤 ${p.name}</strong>
+                    <span style="font-size:0.6rem; color: #555; background: #0d0d15; padding: 3px 8px; border-radius: 4px;">ID: ${p.id.slice(0,8)}...</span>
                 </div>
-            `).join('');
-        }
-    },
-removerReceita(index) {
-        if (!confirm("⚠️ Deseja realmente excluir esta receita permanentemente?")) return;
+                
+                <div style="margin:12px 0; font-size:0.85rem; color: #bbb; line-height: 1.5;">
+                    <div style="color: #888; margin-bottom: 5px;">📞 Contato: ${p.pombo}</div>
+                    ${p.produtos.map(i => `<span style="color: #eee;">•</span> ${i.nome} <b style="color: #ff4c4c">(x${i.qtd})</b>`).join('<br>')}
+                </div>
 
-        // 1. Pega a lista atual do localStorage
-        const crafts = JSON.parse(localStorage.getItem("crafts") || "[]");
+                <div style="display:flex; gap:10px; margin-top: 10px; border-top: 1px solid #2a2a3a; padding-top: 12px;">
+                    ${p.status !== 'finalizado' 
+                        ? `<button onclick="window.app.alterarStatusPedido('${p.id}', 'finalizado')" style="${okBtnStyle}" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">✅ Concluir</button>` 
+                        : `<span style="color: #00ff90; font-size: 0.75rem; font-weight: bold; display: flex; align-items: center;">✓ FINALIZADO</span>`
+                    }
+                    <button onclick="window.app.removerPedido('${p.id}')" style="${delBtnStyle}" onmouseover="this.style.background='#ff4c4c'; this.style.color='#fff'" onmouseout="this.style.background='rgba(255, 76, 76, 0.1)'; this.style.color='#ff4c4c'">🗑️ Excluir</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error("Erro ao renderizar pedidos:", err);
+        container.innerHTML = "<p style='color:red; text-align:center'>Erro ao carregar pedidos do servidor.</p>";
+    }
+},
 
-        // 2. Remove o item pelo índice recebido
-        crafts.splice(index, 1);
+async alterarStatusPedido(id, novoStatus) {
+    try {
+        // 1. Atualiza no Banco de Dados via PATCH
+        const res = await fetch('/api/pedidos', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, status: novoStatus }) // Certifique-se que sua API PATCH aceita 'status'
+        });
 
-        // 3. Salva a lista atualizada de volta
-        localStorage.setItem("crafts", JSON.stringify(crafts));
+        if (!res.ok) throw new Error("Falha ao atualizar status");
 
-        // 4. Manda um log para o Discord (opcional, usando sua função existente)
+        const pedidoAtualizado = await res.json();
+
+        // 2. Envia Webhook de Log
         this.enviarWebhook(this.config.webhookLogs, {
-            title: "🗑️ Receita Removida",
-            color: 0xff4c4c,
-            description: `Uma receita foi excluída do sistema.`,
+            title: "✅ Pedido Finalizado",
+            color: 0x00ff90,
+            description: `O pedido de **${pedidoAtualizado.name}** foi marcado como concluído no sistema.`,
             timestamp: new Date().toISOString()
         });
 
-        // 5. Atualiza a tela e o select de vendas na hora
-        this.carregarCrafts();
-        
-        alert("Receita removida com sucesso!");
-    },
-    adicionarItem() {
-        const select = document.getElementById("produtoSelect");
-        const qtdInput = document.getElementById("quantidadeItem");
-        if (!select || !qtdInput) return;
+        this.renderizarPedidos(); // Recarrega a lista
+    } catch (err) {
+        alert("Erro ao finalizar pedido: " + err.message);
+    }
+},
 
-        const nome = select.value;
-        const qtd = parseInt(qtdInput.value);
-        if (!nome || !qtd) return alert("Selecione o item e a quantidade!");
+async removerPedido(id) {
+    if (!confirm(`⚠️ Deseja realmente excluir este pedido permanentemente?`)) return;
 
-        const crafts = JSON.parse(localStorage.getItem("crafts") || "[]");
-        const produto = crafts.find(c => c.nome === nome);
+    try {
+        // 1. Deleta no Banco via API
+        const res = await fetch(`/api/pedidos?id=${id}`, { method: 'DELETE' });
         
-        this.encomendaAtual.push({ nome, qtd, precoUn: produto ? produto.preco : 0 });
-        this.atualizarViewEncomenda();
-        qtdInput.value = "";
-    },
+        if (!res.ok) throw new Error("Erro ao deletar do servidor");
+
+        // 2. Webhook de Log
+        this.enviarWebhook(this.config.webhookLogs, {
+            title: "🗑️ Pedido Excluído",
+            color: 0xff4c4c,
+            description: `Um pedido (ID: ${id}) foi removido permanentemente.`,
+            timestamp: new Date().toISOString()
+        });
+
+        this.renderizarPedidos();
+    } catch (err) {
+        alert("Erro ao remover: " + err.message);
+    }
+},
+
 
     atualizarViewEncomenda() {
         const container = document.getElementById("listaEncomenda");

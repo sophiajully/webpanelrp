@@ -3,6 +3,37 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
+export async function DELETE(req) {
+  const session = await getServerSession(authOptions);
+
+  // Segurança: Só o admin master pode deletar chaves
+  if (!session || session.user.name !== "admin") {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  try {
+    // Pegamos o ID da URL (ex: /api/keys?id=123)
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "ID não fornecido" }, { status: 400 });
+    }
+
+    await prisma.accessKey.delete({
+      where: { id: id },
+    });
+
+    return NextResponse.json({ message: "Chave removida com sucesso" });
+  } catch (error) {
+    console.error("Erro ao deletar key:", error);
+    return NextResponse.json(
+      { error: "Erro ao excluir a chave ou chave não encontrada" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req) {
   const session = await getServerSession(authOptions);
 

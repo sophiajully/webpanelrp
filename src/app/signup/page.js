@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function Signup() {
   const [step, setStep] = useState(1);
@@ -38,7 +39,16 @@ export default function Signup() {
     <div className="auth-container" style={styles.container}>
       <div className="auth-card" style={styles.card}>
         <div style={styles.header}>
-            <span style={{fontSize: '2rem'}}>🔪</span>
+            {/* Substituído o emoji pelo seu isotipo.png */}
+            <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'center' }}>
+                <Image 
+                    src="/isotipo.png" 
+                    alt="SafraLog Logo" 
+                    width={50} 
+                    height={50} 
+                    priority
+                />
+            </div>
             <h2 style={styles.title}>Crie sua Conta</h2>
             <p style={styles.subtitle}>{step === 1 ? "Escolha seu perfil" : "Preencha seus dados"}</p>
         </div>
@@ -47,10 +57,10 @@ export default function Signup() {
           <div style={styles.stepGroup}>
             <button style={styles.btnChoice} onClick={() => { setType('owner'); setStep(2); }}>
                 <strong>👑 Sou Dono</strong>
-                <span style={styles.choiceSub}>Quero gerenciar meu próprio açougue</span>
+                <span style={styles.choiceSub}>Quero gerenciar minha própria empresa</span>
             </button>
             <button style={styles.btnChoice} onClick={() => { setType('employee'); setStep(2); }}>
-                <strong>🥩 Sou Funcionário</strong>
+                <strong>🚜 Sou Funcionário</strong>
                 <span style={styles.choiceSub}>Quero entrar em uma equipe existente</span>
             </button>
             <p style={styles.footerText}>Já tem conta? <span onClick={() => router.push('/login')} style={styles.link}>Entrar</span></p>
@@ -62,7 +72,8 @@ export default function Signup() {
             
             {type === 'owner' ? (
               <>
-                <input type="text" placeholder="Nome da Empresa (Ex: Açougue Winchester)" required style={styles.input} onChange={e => setFormData({...formData, companyName: e.target.value})}/>
+                {/* Texto de exemplo atualizado para algo mais logístico */}
+                <input type="text" placeholder="Nome da Empresa (Ex: Logística Safra Sul)" required style={styles.input} onChange={e => setFormData({...formData, companyName: e.target.value})}/>
                 <input type="text" placeholder="Key de Acesso (30 dias)" required style={styles.input} onChange={e => setFormData({...formData, accessKey: e.target.value})}/>
               </>
             ) : (

@@ -12,46 +12,52 @@ export const authOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
-      credentials: {
-        username: { label: "Usuário", type: "text" },
-        password: { label: "Senha", type: "password" }
-      },
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
           where: { username: credentials.username },
-          include: { role: true, company: true }
+          include: { role: true, company: true } // Você já busca a empresa aqui!
         });
 
         if (!user || !(await bcrypt.compare(credentials.password, user.password))) {
           throw new Error("Usuário ou senha incorretos.");
         }
 
-        if (user.isOwner && user.expiresAt) {
-          if (new Date() > new Date(user.expiresAt)) {
-            throw new Error("Sua licença expirou!");
-          }
-        }
-
+        // Retornamos os dados da EMPRESA para o Token
         return {
           id: user.id,
           name: user.username,
           isOwner: user.isOwner,
           companyId: user.companyId,
-          role: user.role
+          role: user.role,
+          // ADICIONE ESTES CAMPOS:
+          companyName: user.company?.name,
+          colorPrimary: user.company?.colorPrimary,
+          colorAccent: user.company?.colorAccent
         };
       }
     })
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // Login inicial
       if (user) {
         token.id = user.id;
         token.isOwner = user.isOwner;
         token.companyId = user.companyId;
         token.role = user.role;
+        token.companyName = user.companyName;
+        token.colorPrimary = user.colorPrimary;
+        token.colorAccent = user.colorAccent;
       }
+
+      // IMPORTANTE: Escuta o comando update() do front-end
+      if (trigger === "update" && session?.user) {
+        // Atualiza o token com os novos dados que vieram do front
+        return { ...token, ...session.user };
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -60,6 +66,10 @@ export const authOptions = {
         session.user.isOwner = token.isOwner;
         session.user.companyId = token.companyId;
         session.user.role = token.role;
+        // PASSA PARA A SESSÃO:
+        session.user.companyName = token.companyName;
+        session.user.colorPrimary = token.colorPrimary;
+        session.user.colorAccent = token.colorAccent;
       }
       return session;
     }
