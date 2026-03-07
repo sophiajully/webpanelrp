@@ -1,10 +1,8 @@
-
-
 generator client {
   provider      = "prisma-client-js"
-  engineType = "library"
+  engineType    = "library"
   output        = "../node_modules/.prisma/client"
-  binaryTargets = ["native", "rhel-openssl-3.0.x"] 
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -12,39 +10,68 @@ datasource db {
 }
 
 model User {
-  id             String    @id @default(uuid())
-  username       String    @unique
-  password       String
-  isOwner        Boolean   @default(false)
-  
-  // Controle de Key (Apenas para Donos)
-  accessKey      String?   
-  expiresAt      DateTime? 
+  id           String    @id @default(uuid())
+  username     String    @unique
+  password     String
+  pombo        String?   @unique
 
-  // Relações
-  companyId      String?
-  company        Company?  @relation(fields: [companyId], references: [id])
-  roleId         String?
-  role           Role?     @relation(fields: [roleId], references: [id])
+  // Controle de Key
+  accessKey    String?
+  expiresAt    DateTime?
+
+  // Relação 1: Empresa onde o usuário TRABALHA atualmente (sua empresa "ativa")
+  companyId    String?
+  company      Company?  @relation("CompanyMembers", fields: [companyId], references: [id])
   
-  requests       HireRequest[]
+  roleId       String?
+  role         Role?     @relation(fields: [roleId], references: [id])
+
+  // AJUSTE: Agora é uma lista [], pois ele pode ser dono de várias
+  ownedCompanies Company[] @relation("CompanyOwner")
+
+  requests     HireRequest[]
+  logs           CompanyLog[]
 }
 
 model Company {
   id            String   @id @default(uuid())
   name          String
-  ownerId       String   @unique
+  
+  // AJUSTE: Removemos o @unique aqui para permitir que o mesmo ownerId se repita em várias empresas
+  ownerId       String   
+  owner         User     @relation("CompanyOwner", fields: [ownerId], references: [id])
+
   webhookVendas String?
   webhookLogs   String?
   
   colorPrimary  String   @default("#8b0000")
   colorAccent   String   @default("#ff4c4c")
 
-  users         User[]
+  // Listas
+  users         User[]        @relation("CompanyMembers")
   roles         Role[]
   hireRequests  HireRequest[]
-  crafts         Craft[]
-  pedidos        Pedido[]
+  crafts        Craft[]
+  pedidos       Pedido[]
+  logs           CompanyLog[]
+}
+
+model CompanyLog {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Opcional: Usuário que realizou a ação (nulo se for ação do sistema)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  action    String   // Ex: "MEMBRO_APROVADO", "VENDA_REALIZADA", "CARGO_ALTERADO"
+  details   String   // Texto descritivo: "O usuário X aprovou a entrada de Y"
+  category  String   @default("GERAL") // FINANCEIRO, RH, SISTEMA
+  
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
 }
 
 model Role {
@@ -53,12 +80,13 @@ model Role {
   companyId String
   company   Company  @relation(fields: [companyId], references: [id])
   
+  isOwner    Boolean @default(false)
   canVendas  Boolean @default(true)
   canCraft   Boolean @default(true)
   canLogs    Boolean @default(false)
   canAdmin   Boolean @default(false)
 
-  users     User[]
+  users      User[]
 }
 
 model HireRequest {
@@ -67,7 +95,7 @@ model HireRequest {
   user      User     @relation(fields: [userId], references: [id])
   companyId String
   company   Company  @relation(fields: [companyId], references: [id])
-  status    String   @default("pending") // pending, approved, rejected
+  status    String   @default("pending")
 }
 
 model AccessKey {
@@ -75,7 +103,7 @@ model AccessKey {
   key       String   @unique
   days      Int      @default(30)
   used      Boolean  @default(false)
-  usedBy    String?  // ID do usuário que usou
+  usedBy    String?
   createdAt DateTime @default(now())
 }
 
@@ -92,7 +120,7 @@ model Craft {
 model Pedido {
   id        String   @id @default(uuid())
   name      String
-  pombo     String
+  pombo     String   // Aqui você salvará o rádio do dono no momento do pedido
   companyId String
   company   Company  @relation(fields: [companyId], references: [id])
   produtos  String   @default("[]")
@@ -104,7 +132,7 @@ model Queue {
   taskName  String
   payload   String   @default("{}")
   status    String   @default("pending")
-  error     String?  @db.String 
+  error     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

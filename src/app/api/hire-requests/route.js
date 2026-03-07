@@ -1,31 +1,82 @@
-
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import { Queue } from "@/lib/Queue"; // Certifique-se de que o caminho está correto
+import { Queue } from "@/lib/Queue";
+
+export async function POST(req) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
+    const { companyId } = await req.json();
+
+    // 1. Verifica duplicidade
+    const existing = await prisma.hireRequest.findFirst({
+      where: { userId: session.user.id, companyId, status: "pending" }
+    });
+
+    if (existing) return NextResponse.json({ error: "Você já tem uma solicitação pendente nesta empresa." }, { status: 400 });
+
+    // 2. Busca dados da empresa para o Webhook
+    const targetCompany = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { name: true, webhookLogs: true, colorPrimary: true }
+    });
+
+    // 3. Cria a solicitação
+    const request = await prisma.hireRequest.create({
+      data: {
+        userId: session.user.id,
+        companyId: companyId,
+        status: "pending"
+      }
+    });
+
+    // 4. WEBHOOK: Alerta de Nova Solicitação
+    if (targetCompany?.webhookLogs) {
+      await Queue.add("ENVIAR_WEBHOOK_DISCORD", {
+        url: targetCompany.webhookLogs,
+        embed: {
+          title: "📩 Nova Solicitação de Entrada",
+          color: 0x3498db, // Azul
+          description: `O usuário **${session.user.name}** solicitou acesso à empresa.`,
+          fields: [
+            { name: "Usuário", value: session.user.name, inline: true },
+            { name: "Empresa", value: targetCompany.name, inline: true },
+            { name: "Status", value: "Aguardando Aprovação", inline: false }
+          ],
+          timestamp: new Date().toISOString(),
+          footer: { text: "SafraLog - Sistema de Recrutamento" }
+        }
+      });
+    }
+
+    return NextResponse.json(request);
+  } catch (error) {
+    console.error("Erro POST hire-requests:", error);
+    return NextResponse.json({ error: "Erro ao enviar solicitação" }, { status: 500 });
+  }
+}
 
 export async function GET(req) {
   const session = await getServerSession(authOptions);
 
-  // 1. Segurança: Só o dono pode ver quem quer entrar
   if (!session?.user?.isOwner || !session?.user?.companyId) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
 
   try {
-    // 2. Busca todas as solicitações pendentes para a empresa do dono
     const requests = await prisma.hireRequest.findMany({
       where: {
         companyId: session.user.companyId,
-        status: "pending" // Garante que só pegamos os novos
+        status: "pending"
       },
       include: {
         user: {
           select: {
             id: true,
             username: true,
-            // Adicione outros campos do user que queira mostrar no card
           }
         }
       }
@@ -39,58 +90,59 @@ export async function GET(req) {
 }
 
 export async function PATCH(req) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.isOwner) return NextResponse.json({ error: "Proibido" }, { status: 403 });
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.isOwner) return NextResponse.json({ error: "Proibido" }, { status: 403 });
 
-  const { requestId, action } = await req.json();
+  const { requestId, action } = await req.json();
 
-  try {
-    // 1. Busca os dados da solicitação ANTES de deletar/alterar
-    const request = await prisma.hireRequest.findUnique({
-      where: { id: requestId },
-      include: { 
-        user: { select: { username: true } },
-        company: { select: { name: true, webhookLogs: true, colorPrimary: true } }
-      }
-    });
+  try {
+    const request = await prisma.hireRequest.findUnique({
+      where: { id: requestId },
+      include: { 
+        user: { select: { username: true } },
+        company: { select: { name: true, webhookLogs: true, colorPrimary: true } }
+      }
+    });
 
-    if (!request) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
+    if (!request) return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
 
-    const isApproved = action === 'approve';
+    const isApproved = action === 'approve';
 
-    if (isApproved) {
-      await prisma.user.update({
-        where: { id: request.userId },
-        data: { companyId: request.companyId }
-      });
-    }
+    if (isApproved) {
+      // 1. Vincula o usuário à empresa
+      // 2. Opcional: Atribuir um Role padrão de "Funcionário" aqui se desejar
+      await prisma.user.update({
+        where: { id: request.userId },
+        data: { companyId: request.companyId }
+      });
+    }
 
-    // Deleta o pedido (independente de aprovar ou reprovar)
-    await prisma.hireRequest.delete({ where: { id: requestId } });
+    // Deleta o pedido processado
+    await prisma.hireRequest.delete({ where: { id: requestId } });
 
-    // 2. DISPARAR PARA A FILA (WEBHOOK DISCORD)
-    if (request.company.webhookLogs) {
-      const statusColor = isApproved ? 0x2ecc71 : 0xe74c3c; // Verde ou Vermelho
-      
-      await Queue.add("ENVIAR_WEBHOOK_DISCORD", {
-        url: request.company.webhookLogs,
-        embed: {
-          title: isApproved ? "✅ Novo Membro Aprovado" : "❌ Solicitação Recusada",
-          color: statusColor,
-          description: `O usuário **${request.user.username}** foi ${isApproved ? "aprovado" : "rejeitado"} para entrar na equipe.`,
-          fields: [
-            { name: "Empresa", value: request.company.name, inline: true },
-            { name: "Responsável", value: session.user.name, inline: true }
-          ],
-          timestamp: new Date().toISOString(),
-          footer: { text: "SafraLog - Gestão de Equipe" }
-        }
-      });
-    }
+    // WEBHOOK: Resultado da análise
+    if (request.company.webhookLogs) {
+      const statusColor = isApproved ? 0x2ecc71 : 0xe74c3c; // Verde ou Vermelho
+      
+      await Queue.add("ENVIAR_WEBHOOK_DISCORD", {
+        url: request.company.webhookLogs,
+        embed: {
+          title: isApproved ? "✅ Solicitação Aprovada" : "❌ Solicitação Recusada",
+          color: statusColor,
+          description: `A solicitação de **${request.user.username}** foi processada.`,
+          fields: [
+            { name: "Resultado", value: isApproved ? "Aprovado / Contratado" : "Recusado", inline: true },
+            { name: "Responsável", value: session.user.name, inline: true }
+          ],
+          timestamp: new Date().toISOString(),
+          footer: { text: "SafraLog - Gestão de Equipe" }
+        }
+      });
+    }
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Erro ao processar" }, { status: 500 });
-  }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Erro PATCH hire-requests:", error);
+    return NextResponse.json({ error: "Erro ao processar" }, { status: 500 });
+  }
 }

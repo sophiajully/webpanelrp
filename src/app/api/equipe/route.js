@@ -32,33 +32,37 @@ export async function GET() {
             where: { 
                 companyId: session.user.companyId,
                 NOT: { 
-                    id: session.user.id 
+                    id: session.user.id // Não lista o próprio dono na lista de funcionários
                 } 
             },
             select: { 
-                id: true, 
-                username: true, 
+                // Selecionamos apenas o necessário, EXCLUINDO o campo password
+                id: true,
+                username: true,
                 roleId: true,
                 role: {
                     select: {
-                        name: true,
-                        id: true
+                        id: true,
+                        name: true
                     }
                 }
             },
             orderBy: { 
-                username: 'asc' // Aqui estava o erro: name -> username
+                username: 'asc'
             }
         });
 
-        // Mapeamos para o formato que o seu React espera (usando .name)
-        const equipeFormatada = equipe.map(u => ({
+        // O SEGREDO ESTÁ AQUI:
+        // Não podemos achatar o objeto 'role' para uma string, 
+        // senão o m.role.name no React quebra.
+        const equipeProntaParaOFrontend = equipe.map(u => ({
             id: u.id,
-            name: u.username, 
-            role: u.role?.name || "Funcionário"
+            username: u.username, // Mantemos como username
+            roleId: u.roleId,     // Enviamos o ID para o <select> funcionar
+            role: u.role          // Enviamos o OBJETO ROLE completo (id e name)
         }));
 
-        return NextResponse.json(equipeFormatada);
+        return NextResponse.json(equipeProntaParaOFrontend);
     } catch (error) {
         console.error("Erro Prisma GET:", error);
         return NextResponse.json({ error: "Erro ao buscar equipe" }, { status: 500 });

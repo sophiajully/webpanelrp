@@ -28,10 +28,10 @@ export const authOptions = {
         return {
           id: user.id,
           name: user.username,
-          isOwner: user.isOwner,
+          isOwner: user.role?.isOwner || false,
           companyId: user.companyId,
           role: user.role,
-          // ADICIONE ESTES CAMPOS:
+          pombo: user.pombo,
           companyName: user.company?.name,
           colorPrimary: user.company?.colorPrimary,
           colorAccent: user.company?.colorAccent
@@ -50,12 +50,30 @@ export const authOptions = {
         token.companyName = user.companyName;
         token.colorPrimary = user.colorPrimary;
         token.colorAccent = user.colorAccent;
+        token.pombo = user.pombo
       }
 
       // IMPORTANTE: Escuta o comando update() do front-end
-      if (trigger === "update" && session?.user) {
-        // Atualiza o token com os novos dados que vieram do front
-        return { ...token, ...session.user };
+      if (trigger === "update") {
+        // Buscamos os dados atualizados do usuário e da empresa no banco
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id },
+          include: { 
+            company: true, // Buscamos a nova empresa vinculada
+            role: true 
+          }
+        });
+
+        if (dbUser) {
+          // Atualizamos o token com as informações REAIS do banco de dados
+          token.companyId = dbUser.companyId;
+          token.role = dbUser.role;
+          token.pombo = dbUser.pombo;
+          token.companyName = dbUser.company?.name;
+          token.colorPrimary = dbUser.company?.colorPrimary;
+          token.colorAccent = dbUser.company?.colorAccent;
+          token.isOwner = dbUser.role?.isOwner || false;
+        }
       }
 
       return token;
@@ -70,6 +88,7 @@ export const authOptions = {
         session.user.companyName = token.companyName;
         session.user.colorPrimary = token.colorPrimary;
         session.user.colorAccent = token.colorAccent;
+        session.user.pombo = token.pombo;
       }
       return session;
     }

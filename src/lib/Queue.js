@@ -2,26 +2,25 @@ import { prisma } from "./prisma";
 
 class QueueManager {
     constructor() {
-        this.isProcessing = false;
+        // Agora controlamos o processamento por URL de Webhook específica
+        this.activeWebhooks = new Set(); 
         this.handlers = new Map();
-        this.DEFAULT_DELAY = 1000; // 1 segundo de intervalo entre jobs (Rate Limit preventivo)
+        this.DEFAULT_DELAY = 1000;
 
-        // Inicia a limpeza de jobs travados e processamento assim que a classe é instanciada
         if (typeof window === "undefined") {
             this.init();
         }
     }
 
-    // Método para rodar assim que o servidor subir
     async init() {
         try {
             console.log("[Queue] Sistema iniciado. Recuperando jobs travados...");
-            // Se o servidor caiu no meio de um processo, volta o job para pendente
             await prisma.queue.updateMany({
                 where: { status: "processing" },
                 data: { status: "pending" }
             });
-            this.processNext();
+            // Tenta processar o que estiver pendente no início
+            this.processAll();
         } catch (err) {
             console.error("[Queue] Erro na inicialização:", err);
         }
@@ -45,8 +44,9 @@ class QueueManager {
                 }
             });
 
-            console.log(`[Queue] Job ${job.id} adicionado à fila.`);
-            this.processNext();
+            console.log(`[Queue] Job ${job.id} adicionado.`);
+            // Ao adicionar, tentamos processar apenas para o webhook deste payload
+            this.processNext(payload.url); 
             return job;
         } catch (err) {
             console.error("[Queue] Erro ao adicionar job:", err);
@@ -54,93 +54,93 @@ class QueueManager {
         }
     }
 
-    async processNext() {
-        if (this.isProcessing) return;
-        this.isProcessing = true;
+    // Tenta rodar filas de todos os webhooks pendentes
+    async processAll() {
+        const pendingJobs = await prisma.queue.findMany({
+            where: { status: "pending" },
+            select: { payload: true }
+        });
+
+        const urls = [...new Set(pendingJobs.map(j => JSON.parse(j.payload).url))];
+        urls.forEach(url => this.processNext(url));
+    }
+
+    async processNext(webhookUrl) {
+        // Se já existe um processo rodando para ESTE webhook, ignora
+        if (!webhookUrl || this.activeWebhooks.has(webhookUrl)) return;
+
+        this.activeWebhooks.add(webhookUrl);
 
         try {
-            // Busca o próximo da fila (mais antigo primeiro)
+            // Busca o próximo job pendente especificamente para esta URL
+            // O Prisma 5+ suporta busca dentro de JSON se configurado, 
+            // mas aqui usaremos uma busca segura via contains no payload.
             const job = await prisma.queue.findFirst({
-                where: { status: "pending" },
+                where: { 
+                    status: "pending",
+                    payload: { contains: webhookUrl } 
+                },
                 orderBy: { createdAt: "asc" }
             });
 
             if (!job) {
-                this.isProcessing = false;
+                this.activeWebhooks.delete(webhookUrl);
                 return;
             }
 
-            // Marca como em processamento
             await prisma.queue.update({
                 where: { id: job.id },
                 data: { status: "processing" }
             });
 
             const handler = this.handlers.get(job.taskName);
-
             if (handler) {
                 const payload = JSON.parse(job.payload);
                 
-                // Executa a tarefa real
-                await handler(payload);
+                try {
+                    await handler(payload);
 
-                // Sucesso: Marca como completado
-                await prisma.queue.update({
-                    where: { id: job.id },
-                    data: { status: "completed" }
-                });
-
-                console.log(`[Queue] Job ${job.id} finalizado com sucesso.`);
-
-                // Aguarda o delay padrão para não estressar a API do Discord
-                await this.sleep(this.DEFAULT_DELAY);
-
-            } else {
-                throw new Error(`Nenhum handler definido para ${job.taskName}`);
-            }
-
-        } catch (error) {
-            console.error(`[Queue] Erro no job:`, error.message);
-
-            // LOGICA DE RATE LIMIT DO DISCORD (HTTP 429)
-            if (error.status === 429) {
-                const retryAfter = (error.retryAfter || 5) * 1000;
-                console.warn(`[Queue] Rate Limit! Aguardando ${retryAfter}ms antes de tentar novamente.`);
-                
-                // Volta para pending para ser tentado de novo
-                await prisma.queue.update({
-                    where: { id: (await prisma.queue.findFirst({ where: { status: "processing" } }))?.id || "" }, // Garante pegar o ID atual
-                    data: { status: "pending" }
-                });
-
-                await this.sleep(retryAfter);
-            } else {
-                // Erro fatal ou de código: Marca como falho para não travar a fila
-                // O findFirst aqui é uma garantia caso o objeto 'job' esteja inacessível
-                const currentJob = await prisma.queue.findFirst({ where: { status: "processing" } });
-                if (currentJob) {
                     await prisma.queue.update({
-                        where: { id: currentJob.id },
-                        data: { 
-                            status: "failed", 
-                            error: error.message 
-                        }
+                        where: { id: job.id },
+                        data: { status: "completed" }
                     });
+
+                    console.log(`[Queue] Webhook ${webhookUrl} - Job ${job.id} OK.`);
+                    await this.sleep(this.DEFAULT_DELAY);
+
+                } catch (error) {
+                    if (error.status === 429) {
+                        const retryAfter = (error.retryAfter || 5) * 1000;
+                        console.warn(`[Queue] Rate Limit no Webhook ${webhookUrl}. Aguardando ${retryAfter}ms`);
+                        
+                        await prisma.queue.update({
+                            where: { id: job.id },
+                            data: { status: "pending" }
+                        });
+
+                        await this.sleep(retryAfter);
+                    } else {
+                        await prisma.queue.update({
+                            where: { id: job.id },
+                            data: { status: "failed", error: error.message }
+                        });
+                    }
                 }
             }
+        } catch (err) {
+            console.error(`[Queue] Erro crítico na fila ${webhookUrl}:`, err);
+        } finally {
+            // Libera este webhook para o próximo job
+            this.activeWebhooks.delete(webhookUrl);
+            // Verifica se tem mais coisa para este mesmo webhook
+            this.processNext(webhookUrl);
         }
-
-        this.isProcessing = false;
-        // Chama a si mesmo para verificar se há mais itens
-        this.processNext();
     }
 }
 
-// Exporta a instância única
 export const Queue = new QueueManager();
 
-// --- DEFINIÇÃO DOS HANDLERS (BACKEND) ---
-
+// --- HANDLER (Igual ao anterior, mas com log melhor) ---
 Queue.define("ENVIAR_WEBHOOK_DISCORD", async (data) => {
     const { url, embed } = data;
 
@@ -162,7 +162,5 @@ Queue.define("ENVIAR_WEBHOOK_DISCORD", async (data) => {
         throw error;
     }
 
-    if (!response.ok) {
-        throw new Error(`Discord API erro: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Erro API Discord: ${response.status}`);
 });

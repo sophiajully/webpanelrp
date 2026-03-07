@@ -22,7 +22,7 @@ window.app = {
         this.carregarCrafts();
         this.aplicarTema();
         this.renderizarPedidos();
-        this.carregarEmpresasMercado();
+        this.carregarLogs()
         const cp = document.getElementById("colorPrimary");
         const ca = document.getElementById("colorAccent");
         
@@ -73,9 +73,12 @@ async calcularEncomenda() {
 
         const pedidoCriado = await response.json();
 
-        // 4. Enviar Webhook de Venda para o Discord
         const itensTexto = this.encomendaAtual.map(i => `🔸 **${i.nome}** (x${i.qtd})`).join('\n');
-        
+        await this.registrarLog({
+    action: "VENDA_REALIZADA",
+    category: "FINANCEIRO",
+    details: `Nova venda registrada para ${nomeCliente}. Valor Total: $${total.toLocaleString()}.`
+});
         await this.enviarWebhook(this.config.webhookVendas, {
             title: "Nova Encomenda Recebida!",
             color: 0x00ff90,
@@ -184,6 +187,129 @@ async salvarConfig(companyId) {
         return null;
     }
 },
+// Adicione estas funções dentro do objeto window.app = { ... }
+
+    // --- ESTADO DOS LOGS ---
+    logsMeta: { page: 1, totalPages: 1 },
+
+    // --- FUNÇÃO MESTRA: REGISTRAR E ENVIAR LOG ---
+    async registrarLog({ action, details, category = "GERAL" }) {
+        try {
+            // 1. Salva no Banco de Dados (Prisma)
+            const res = await fetch('/api/company-logs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    companyId: this.companyId,
+                    action: action,
+                    details: details,
+                    category: category
+                })
+            });
+
+            // 2. Dispara Webhook para o Discord (Fila/Queue)
+            if (this.config.webhookLogs) {
+                const corBadge = action.includes('ERRO') || action.includes('REMOVIDO') ? 0xef4444 : 0xd4a91c;
+                
+                await this.enviarWebhook(this.config.webhookLogs, {
+                    title: `[${category}] ${action}`,
+                    color: corBadge,
+                    description: details,
+                    timestamp: new Date().toISOString(),
+                    footer: { text: `Sistema de Auditoria - ${this.config.nomeEmpresa}` }
+                });
+            }
+
+            // Se a aba de logs estiver aberta, recarrega a lista para mostrar o novo log
+            if (document.getElementById('tab-logs')?.style.display !== 'none') {
+                this.carregarLogs(1);
+            }
+        } catch (err) {
+            console.error("Erro ao registrar log:", err);
+        }
+    },
+
+    // --- CARREGAR LOGS COM PAGINAÇÃO E FILTRO ---
+    async carregarLogs(page = 1, search = "") {
+        const corpoTabela = document.getElementById("tabelaLogsCorpo");
+        if (!corpoTabela) return;
+
+        try {
+            // Adicionamos a categoria se houver um select de filtro
+            const categoria = document.getElementById("categoriaLogSelect")?.value || "";
+            
+            const url = `/api/company-logs?companyId=${this.companyId}&page=${page}&limit=10&search=${search}&category=${categoria}`;
+            const res = await fetch(url);
+            const { logs, meta } = await res.json();
+
+            this.logsMeta = meta;
+
+            if (!logs || logs.length === 0) {
+                corpoTabela.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:40px; color:#4b5563;">Nenhum registro encontrado.</td></tr>`;
+                this.atualizarControlesPaginacao();
+                return;
+            }
+
+            corpoTabela.innerHTML = logs.map(log => {
+                const cor = log.category === 'FINANCEIRO' ? '#22c55e' : 
+                            log.category === 'RH' ? '#3b82f6' : 
+                            log.action.includes('ERRO') ? '#ef4444' : '#d4a91c';
+
+                return `
+                    <tr style="border-bottom: 1px solid #11111a; transition: background 0.2s;" onmouseover="this.style.background='#0a0a0f'" onmouseout="this.style.background='transparent'">
+                        <td style="padding: 14px 8px; font-size: 0.8rem; color: #4b5563; font-family: monospace;">
+                            ${new Date(log.createdAt).toLocaleString('pt-BR')}
+                        </td>
+                        <td style="padding: 14px 8px;">
+                            <span style="background: ${cor}22; color: ${cor}; padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 800; border: 1px solid ${cor}44;">
+                                ${log.action}
+                            </span>
+                        </td>
+                        <td style="padding: 14px 8px; font-size: 0.85rem; color: #eee; max-width: 400px; line-height: 1.4;">
+                            ${log.details}
+                        </td>
+                        <td style="padding: 14px 8px; font-size: 0.85rem; font-weight: bold; color: var(--cor-primaria, #d4a91c);">
+                            ${log.user?.username || 'Sistema'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            this.atualizarControlesPaginacao();
+        } catch (err) {
+            console.error("Erro ao carregar logs:", err);
+            corpoTabela.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Erro ao carregar dados.</td></tr>`;
+        }
+    },
+
+    // --- CONTROLES DE NAVEGAÇÃO ---
+    atualizarControlesPaginacao() {
+        const info = document.getElementById("paginacaoInfo");
+        const btnPrev = document.getElementById("btnPrevLog");
+        const btnNext = document.getElementById("btnNextLog");
+
+        if (info) info.innerText = `Página ${this.logsMeta.page} de ${this.logsMeta.totalPages || 1}`;
+        
+        if (btnPrev) {
+            btnPrev.disabled = this.logsMeta.page <= 1;
+            btnPrev.style.opacity = btnPrev.disabled ? "0.3" : "1";
+            btnPrev.style.cursor = btnPrev.disabled ? "default" : "pointer";
+        }
+        
+        if (btnNext) {
+            btnNext.disabled = this.logsMeta.page >= this.logsMeta.totalPages;
+            btnNext.style.opacity = btnNext.disabled ? "0.3" : "1";
+            btnNext.style.cursor = btnNext.disabled ? "default" : "pointer";
+        }
+    },
+
+    mudarPaginaLog(delta) {
+        const novaPagina = this.logsMeta.page + delta;
+        if (novaPagina > 0 && novaPagina <= this.logsMeta.totalPages) {
+            const busca = document.getElementById("searchLogInput")?.value || "";
+            this.carregarLogs(novaPagina, busca);
+        }
+    },
     aplicarTema() {
         const root = document.documentElement;
         root.style.setProperty('--primary-red', this.config.colorPrimary);
@@ -348,7 +474,35 @@ async carregarCrafts() {
         }
     },
     // --- FIM DA LÓGICA DO MERCANTÃO ---
+async registrarLog({ action, details, category = "GERAL", userId = null }) {
+        try {
+            // 1. Salva no Banco de Dados (Prisma)
+            const resLog = await fetch('/api/company-logs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    companyId: this.companyId,
+                    userId: userId, // ID de quem fez a ação
+                    action: action,
+                    details: details,
+                    category: category
+                })
+            });
 
+            // 2. Dispara o Webhook para o Discord (Se houver URL configurada)
+            if (this.config.webhookLogs) {
+                await this.enviarWebhook(this.config.webhookLogs, {
+                    title: `[${category}] ${action}`,
+                    color: action.includes('ERRO') ? 0xff4c4c : 0xe5b95f,
+                    description: details,
+                    timestamp: new Date().toISOString(),
+                    footer: { text: "Sistema de Auditoria SafraLog" }
+                });
+            }
+        } catch (err) {
+            console.error("Erro ao registrar log centralizado:", err);
+        }
+    },
     async registrarCraft() {
         const nome = document.getElementById("craftNome")?.value;
         const unidade = document.getElementById("unidades")?.value;
@@ -376,6 +530,11 @@ async carregarCrafts() {
             });
 
             if (res.ok) {
+                await this.registrarLog({
+    action: "RECEITA_CRIADA",
+    category: "PRODUCAO",
+    details: `O produto "${nome}" foi adicionado ao catálogo de craft.`
+});
                 this.enviarWebhook(this.config.webhookLogs, {
                     title: "🛠️ Nova Receita Registrada",
                     color: 0xe5b95f,
@@ -397,6 +556,11 @@ async carregarCrafts() {
         try {
             const res = await fetch(`/api/crafts?id=${id}`, { method: 'DELETE' });
             if (res.ok) {
+                await this.registrarLog({
+    action: "RECEITA_REMOVIDA",
+    category: "PRODUCAO",
+    details: `Uma receita (ID: ${id}) foi excluída do sistema.`
+});
                 this.enviarWebhook(this.config.webhookLogs, {
                     title: "🗑️ Receita Removida",
                     color: 0xff4c4c,
@@ -628,7 +792,12 @@ async alterarStatusPedido(id, novoStatus) {
         if (!res.ok) throw new Error("Falha ao atualizar status");
 
         const pedidoAtualizado = await res.json();
-
+        await this.registrarLog({
+    action: "PEDIDO_FINALIZADO",
+    category: "LOGISTICA",
+    details: `O pedido de ${pedidoAtualizado.name} foi marcado como concluído.`
+});
+        
         // 2. Envia Webhook de Log
         this.enviarWebhook(this.config.webhookLogs, {
             title: "✅ Pedido Finalizado",
@@ -691,91 +860,167 @@ async removerPedido(id) {
             this.adicionarCampoInsumo();
         }
     },
-        mercadoRawData: [],
-    empresaSelecionadaId: null,
-    carrinhoMercado: [],
+    // Dentro de window.app = { ... }
 
-    async carregarEmpresasMercado() {
-        console.log("🔍 [Mercadão] Tentando carregar empresas...");
-        try {
-            // Chamada com caminho absoluto
-            const res = await fetch('/api/companies');
-            if (!res.ok) throw new Error(`Erro HTTP: ${res.status}`);
-            
-            const companies = await res.json();
-            console.log("📦 [Mercadão] Dados recebidos:", companies);
+// 1. Abre o modal e gera a senha aleatória
+abrirModalContratacao() {
+    const pass = this.gerarSenhaForte(8);
+    this.senhaTemporaria = pass; // Guarda na memória do objeto
+    
+    document.getElementById('new_func_pass_display').innerText = pass;
+    document.getElementById('new_func_username').value = "";
+    document.getElementById('modalContratacao').style.display = 'flex';
+},
 
-            this.companyId = document.body.getAttribute("data-company-id");
+gerarSenhaForte(tamanho) {
+    const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Sem caracteres confusos como 0 e O
+    let retVal = "";
+    for (let i = 0, n = charset.length; i < tamanho; ++i) {
+        retVal += charset.charAt(Math.floor(Math.random() * n));
+    }
+    return retVal;
+},
+// Exemplo de como ficaria a chamada no scripts.js
+exibirModalSenha(username, senha) {
+    const html = `
+        <div id="tempModalSenha" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; z-index:9999;">
+            <div style="background:#1e1e2f; padding:30px; border-radius:15px; border-top:5px solid #00ff90; width:350px; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.5)">
+                <h3 style="color:#fff; margin-bottom:10px">🔑 Senha Gerada</h3>
+                <p style="color:#888; font-size:0.9rem">Passe os dados abaixo para <b>${username}</b></p>
+                
+                <div style="background:#0d0f14; padding:15px; border-radius:8px; margin:20px 0; border:1px dashed #00ff90; position:relative">
+                    <span id="txtSenha" style="color:#00ff90; font-family:monospace; font-size:1.2rem; letter-spacing:2px">${senha}</span>
+                </div>
 
-            // Filtro com tratamento de erro e logs
-            this.mercadoRawData = companies.filter(c => {
-                return String(c.id) !== String(this.companyId);
-            });
-
-            this.renderizarCardsEmpresas(this.mercadoRawData);
-        } catch (err) {
-            console.error("❌ [Mercadão] Erro fatal:", err);
-            const container = document.getElementById("gridEmpresasMercado");
-            if (container) container.innerHTML = `<p style="color:red">Erro: ${err.message}</p>`;
-        }
-    },
-
-    renderizarCardsEmpresas(lista) {
-        const container = document.getElementById("gridEmpresasMercado");
-        if (!container) return console.log("CONTAINER NAO ECONTRADO ", container)
-
-        if (!lista || lista.length === 0) {
-            container.innerHTML = "<p style='color:#666'>Nenhum fornecedor disponível.</p>";
-            return;
-        }
-
-        // Layout otimizado para não "bugar" com muitas empresas
-        container.innerHTML = lista.map(c => `
-            <div id="empresa_card_${c.id}" 
-                 onclick="window.app.selecionarFornecedor('${c.id}')"
-                 style="background:#1c1f26; padding:10px; border-radius:6px; border:1px solid #333; cursor:pointer; text-align:center; min-height:50px; display:flex; align-items:center; justify-content:center;">
-                <span style="font-weight:bold; color:#fff; font-size:0.75rem; line-height:1.1">${c.name}</span>
+                <button onclick="window.app.copiarSenhaDireto('${senha}')" style="width:100%; background:#00ff90; color:#000; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; margin-bottom:10px">COPIAR SENHA</button>
+                <button onclick="document.getElementById('tempModalSenha').remove()" style="background:none; border:none; color:#ff4c4c; cursor:pointer; font-size:0.8rem">FECHAR</button>
             </div>
-        `).join('');
-    },
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+},
 
-    selecionarFornecedor(id) {
-        this.empresaSelecionadaId = String(id);
-        const empresa = this.mercadoRawData.find(c => String(c.id) === String(id));
+// Função de apoio para o botão do modal
+copiarSenhaDireto(senha) {
+    navigator.clipboard.writeText(senha);
+    alert("Copiado!");
+},
+async resetarSenhaFuncionario(userId, username) {
 
-        // Feedback visual imediato nos cards
-        this.mercadoRawData.forEach(c => {
-            const el = document.getElementById(`empresa_card_${c.id}`);
-            if (el) {
-                const ativo = String(c.id) === String(id);
-                el.style.borderColor = ativo ? "#d4a91c" : "#333";
-                el.style.background = ativo ? "rgba(212,169,28,0.1)" : "#1c1f26";
-            }
+    const novaSenha = this.gerarSenhaForte(8);
+
+
+    const confirmar = confirm(`Deseja realmente resetar a senha de ${username}?\n\nA nova senha será: ${novaSenha}\n\n(Copie a senha antes de confirmar!)`);
+    
+    if (!confirmar) return;
+
+    try {
+        const res = await fetch('/api/users/reset-password', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: userId,
+                newPassword: novaSenha
+            })
         });
 
-        const container = document.getElementById("gridProdutosMercado");
-        if (!container || !empresa) return;
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+await this.registrarLog({
+    action: "SENHA_RESETADA",
+    category: "SEGURANCA",
+    details: `A senha de acesso do usuário ${username} foi redefinida por um administrador.`
+});
+        // Envia Log para o Discord avisando do Reset (sem mostrar a senha por segurança)
+        await this.enviarWebhook(this.config.webhookLogs, {
+            title: "🔑 Senha Resetada",
+            color: 0xf1c40f,
+            description: `A senha do colaborador **${username}** foi alterada pelo administrador.`,
+            timestamp: new Date().toISOString()
+        });
 
-        // Se tiver MUITO craft, o grid-template-columns auto-fill resolve o bug visual
-        if (!empresa.crafts || empresa.crafts.length === 0) {
-            container.innerHTML = "<p style='color:#666'>Nenhum produto cadastrado.</p>";
+        this.exibirModalSenha(username, novaSenha); // password é a senha temporária gerada
+        document.getElementById('modalContratacao').style.display = 'none';
+
+    } catch (err) {
+        alert("Erro ao resetar senha: " + err.message);
+    }
+},
+async executarContratacao() {
+    const usernameInput = document.getElementById('new_func_username');
+    const roleInput = document.getElementById('new_func_role');
+    const roleText = roleInput.options[roleInput.selectedIndex]?.text || "Não definido";
+    
+    const username = usernameInput ? usernameInput.value.trim() : "";
+    const roleId = roleInput ? roleInput.value : "";
+    
+    // A senha permanece na memória para o envio à API, mas não irá para o Webhook
+    const password = this.senhaTemporaria; 
+
+    if (!username) return alert("Digite um nome de usuário!");
+    if (!password) return alert("Erro: Senha não foi gerada.");
+
+    try {
+        const res = await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: username,
+                password: password, 
+                roleId: roleId,
+                companyId: this.companyId
+            })
+        });
+
+        const data = await res.json();
+        
+        if (data.error) {
+            alert("Erro do Servidor: " + data.error);
             return;
         }
 
-        container.innerHTML = empresa.crafts.map(p => `
-            <div style="background:#161922; padding:12px; border-radius:8px; border:1px solid #2d2d2d; display:flex; flex-direction:column; gap:5px">
-                <span style="color:#d4a91c; font-weight:bold; font-size:0.8rem">📦 ${p.name}</span>
-                <div style="display:flex; justify-content:space-between;">
-                    <span style="color:#00ff90; font-weight:bold">$${p.price}</span>
-                    <small style="color:#555">${p.unit || 'un'}</small>
-                </div>
-                <div style="display:flex; gap:4px; margin-top:5px">
-                    <input type="number" id="qtd_mercado_${p.id}" value="1" min="1" style="width:50px; background:#000; color:#fff; border:1px solid #444; border-radius:4px; padding:2px 5px">
-                    <button onclick="window.app.adicionarAoCarrinhoMercado('${p.id}', '${p.name}', ${p.price})" style="flex:1; background:#d4a91c; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:0.7rem">ADD</button>
-                </div>
-            </div>
-        `).join('');
+        await this.registrarLog({
+    action: "FUNCIONARIO_ADMITIDO",
+    category: "RH",
+    details: `O colaborador ${username} foi contratado com o cargo ${roleText}.`
+});
+
+        // --- WEBHOOK ATUALIZADO (SEM SENHA) ---
+        await this.enviarWebhook(this.config.webhookLogs, {
+            title: "👤 Novo Funcionário Registrado",
+            color: 0x2b2d31, // Cor mais sóbria (cinza escuro)
+            description: `Um novo colaborador foi inserido no sistema.`,
+            fields: [
+                { name: "🏷️ Usuário", value: `**${username}**`, inline: true },
+                { name: "💼 Cargo", value: `\`${roleText}\``, inline: true },
+                { name: "🛡️ Status", value: `✅ Conta Ativa`, inline: true },
+                { name: "⚠️ Aviso", value: "A senha foi entregue apenas ao administrador no ato da criação.", inline: false }
+            ],
+            footer: { text: `Gestão de Equipe - ${this.config.nomeEmpresa}` },
+            timestamp: new Date().toISOString()
+        });
+
+        // Exibimos a senha uma última vez para o dono copiar
+        alert(`✅ FUNCIONÁRIO CONTRATADO!\n\nUsuário: ${username}\nSenha: ${password}\n\n⚠️ IMPORTANTE: A senha NÃO foi enviada para os logs por segurança. Copie-a agora!`);
+        
+        document.getElementById('modalContratacao').style.display = 'none';
+        
+        if(typeof this.carregarEquipe === "function") {
+            this.carregarEquipe();
+        } else {
+            window.location.reload();
+        }
+
+    } catch (err) {
+        console.error("Erro no fetch:", err);
+        alert("Erro de conexão ao tentar contratar.");
     }
+}
+
+
+
+
+
 };
 
 

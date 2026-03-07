@@ -21,10 +21,12 @@ import {
   Package, 
   CheckCircle, 
   XCircle, 
-  Ban,
+  Scroll,
   UserPlus,
   ChevronRight,
-  Store
+  Store,
+  Search,
+  History
 } from "lucide-react";
 
 export default function Home() {
@@ -38,7 +40,11 @@ export default function Home() {
   const [craftList, setCraftList] = useState([]);
   const [teamList, setTeamList] = useState([]);
   const [roleList, setRoleList] = useState([]);
+  const [showCompanySelector, setShowCompanySelector] = useState(false);
   const [keyList, setKeyList] = useState([]);
+  const [showPerfilModal, setShowPerfilModal] = useState(false);
+const [meuPombo, setMeuPombo] = useState("");
+const [loadingPombo, setLoadingPombo] = useState(false);
  const [cartazData, setCartazData] = useState({
   titulo: 'PROCURA-SE',
   subtitulo: 'NEGOCIOS & PROPRIEDADES',
@@ -54,6 +60,104 @@ export default function Home() {
   const [newRole, setNewRole] = useState({
     name: "", canVendas: true, canCraft: true, canLogs: false, canAdmin: false
   });
+  const [minhasEmpresas, setMinhasEmpresas] = useState([]);
+// Adicione aos seus estados existentes
+const [showNovaEmpresaModal, setShowNovaEmpresaModal] = useState(false);
+const [novaEmpresaData, setNovaEmpresaData] = useState({ name: "", colorPrimary: "#8b0000" });
+
+const criarNovaEmpresa = async () => {
+  if (!novaEmpresaData.name) return alert("Dê um nome para sua nova fazenda!");
+  
+  setLoadingAction(true);
+  try {
+    const res = await fetch('/api/companies/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(novaEmpresaData)
+    });
+
+    if (res.ok) {
+      const empresaCriada = await res.json();
+      alert("✅ Empresa criada com sucesso!");
+      setShowNovaEmpresaModal(false);
+      
+      // Opcional: Já trocar para a empresa nova automaticamente
+      await trocarEmpresaAtiva(empresaCriada.id);
+    }
+  } catch (err) {
+    alert("Erro ao criar empresa.");
+  } finally {
+    setLoadingAction(false);
+  }
+};
+// Função para buscar todas as empresas onde o usuário é Owner
+const carregarMinhasEmpresas = useCallback(async () => {
+  try {
+    const res = await fetch('/api/companies/owner'); // Você precisará criar esta rota
+    const data = await res.json();
+    if (Array.isArray(data)) setMinhasEmpresas(data);
+  } catch (err) {
+    console.error("Erro ao carregar empresas:", err);
+  }
+}, []);
+const excluirEmpresa = async (id, nome) => {
+  if (!confirm(`Tem certeza que deseja apagar a empresa "${nome}"? Todos os dados serão perdidos.`)) return;
+
+  try {
+    const res = await fetch(`/api/companies/delete?id=${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      alert("Empresa removida.");
+      carregarMinhasEmpresas(); // Atualiza a lista da sidebar
+    } else {
+      const err = await res.json();
+      alert(err.error);
+    }
+  } catch (err) {
+    alert("Erro ao excluir.");
+  }
+};
+// Função para trocar a empresa ativa
+const trocarEmpresaAtiva = async (novoCompanyId) => {
+  setLoadingAction(true);
+  try {
+    const res = await fetch('/api/users/switch-company', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyId: novoCompanyId })
+    });
+
+    if (res.ok) {
+      // 1. Atualiza a sessão local. 
+      // O NextAuth chamará o callback 'jwt' e 'session' no seu backend.
+      await update({
+        ...session,
+        user: {
+          ...session?.user,
+          companyId: novoCompanyId
+        }
+      });
+
+      // 2. Opcional: Recarregar para garantir que todos os useEffects 
+      // que dependem da session.user.companyId sejam disparados com dados limpos.
+      window.location.reload();
+    } else {
+      const erro = await res.json();
+      alert(erro.error || "Erro ao trocar de empresa.");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Erro de conexão.");
+  } finally {
+    setLoadingAction(false);
+  }
+};
+
+// Disparar a busca quando for Owner
+useEffect(() => {
+  if (session?.user?.isOwner) {
+    carregarMinhasEmpresas();
+  }
+}, [session?.user?.isOwner, carregarMinhasEmpresas]);
 
   const handleQtdChange = (id, valor) => {
     setProducaoQtds(prev => ({ ...prev, [id]: valor }));
@@ -72,8 +176,9 @@ export default function Home() {
           companyName: novosDados.name
         }
       });
-      
+
       if (status === "authenticated") {
+
         const corPrimaria = session?.user?.colorPrimary || "#d4a91c";
         const corDestaque = session?.user?.colorAccent || "#f1c40f";
 
@@ -85,6 +190,43 @@ export default function Home() {
       }
     }
   };
+const carregarPombo = useCallback(async () => {
+    try {
+        const res = await fetch("/api/users/pombo");
+        const data = await res.json();
+        if (data.pombo) setMeuPombo(data.pombo);
+    } catch (err) {
+        console.error("Erro ao carregar pombo:", err);
+    }
+}, []);
+
+// Monitora a abertura do modal para carregar os dados
+useEffect(() => {
+    if (showPerfilModal) carregarPombo();
+}, [showPerfilModal, carregarPombo]);
+
+const salvarConfigPombo = async () => {
+    setLoadingPombo(true);
+    try {
+        const res = await fetch("/api/users/pombo", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pombo: meuPombo })
+        });
+        const data = await res.json();
+        
+        if (data.error) {
+            alert("❌ " + data.error);
+        } else {
+            alert("✅ Pombo configurado com sucesso!");
+            if (update) update(); // Atualiza a sessão do NextAuth
+        }
+    } catch (err) {
+        alert("Erro ao conectar com o servidor.");
+    } finally {
+        setLoadingPombo(false);
+    }
+};
 
   const carregarCrafts = useCallback(async () => {
     const res = await fetch('/api/crafts');
@@ -177,10 +319,19 @@ export default function Home() {
       root.style.setProperty('--cor-destaque-bg', `${corDestaque}1A`);
     }
   }, [session, carregarKeys, carregarEquipe, carregarRoles, carregarCrafts]);
-
+useEffect(() => {
+  if (status === "authenticated" && session?.user?.companyId) {
+    refreshData(); // Esta função deve buscar os dados da empresa atual
+  }
+}, [status, session?.user?.companyId, refreshData]);
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
     if (status === "authenticated") {
+      if(!session.user.pombo) {
+        console.log(session.user)
+        setShowPerfilModal(true)
+        alert("⚠️ Você precisa configurar seu Pombo para continuar!");
+      }
       document.body.setAttribute("data-company-id", session?.user?.companyId || "");
       const script = document.createElement("script");
       script.src = "./carnes/scripts.js";
@@ -227,6 +378,7 @@ export default function Home() {
       setLoadingAction(false);
     }
   };
+
 
   const removerMembro = async (id) => {
     if (!confirm("Deseja realmente remover este colaborador da empresa?")) return;
@@ -283,33 +435,201 @@ export default function Home() {
     if (titleEl) titleEl.innerText = title;
   };
 
-  if (status === "loading") {
-    return (
-      <div style={styles.loadingScreen}>
-        <div style={styles.loaderSpinner}></div>
-        <span>Sincronizando Sistema...</span>
+ if (status === "loading") {
+  return (
+    <div style={styles.loadingScreen}>
+      {/* Injeção de CSS para a animação */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+      
+      <div style={{
+        ...styles.loaderSpinner,
+        width: '40px',
+        height: '40px',
+        border: '3px solid rgba(212, 169, 28, 0.1)',
+        borderTop: '3px solid var(--cor-primaria, #d4a91c)',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite', // Aqui a mágica acontece
+        marginBottom: '15px'
+      }}></div>
+      <span style={{ color: '#9ca3af', fontSize: '0.9rem', fontWeight: '500' }}>
+        Sincronizando Sistema...
+      </span>
+    </div>
+  );
+}
+
+// No seu page.js, logo após o loading spinner...
+
+if (status === "authenticated" && !session?.user?.companyId) {
+  return (
+    <div style={{...styles.loadingScreen, background: '#0a0a0f', padding: '20px', textAlign: 'center'}}>
+      <div style={{ background: '#161625', padding: '40px', borderRadius: '16px', border: '1px solid #2d2d3d', maxWidth: '450px' }}>
+        <Shield size={48} color="var(--cor-primaria)" style={{ marginBottom: '20px' }} />
+        <h2 style={{ color: '#fff', marginBottom: '10px' }}>Acesso Restrito</h2>
+        <p style={{ color: '#9ca3af', marginBottom: '25px', lineHeight: '1.5' }}>
+          Você ainda não está vinculado a nenhuma empresa. Para utilizar o painel, você precisa solicitar a entrada em uma equipe.
+        </p>
+        <button 
+          onClick={() => router.push('/empresas')}
+          style={{ ...styles.baseButton, ...styles.buttonPrimary, width: '100%' }}
+        >
+          Procurar Empresas
+        </button>
+        <button 
+          onClick={() => signOut()}
+          style={{ background: 'none', border: 'none', color: '#6b7280', marginTop: '20px', cursor: 'pointer' }}
+        >
+          Sair da conta
+        </button>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   return (
     <div style={styles.layoutWrapper}>
       <nav style={styles.sidebar}>
-        <div style={styles.sidebarTopSection}>
-          <div style={styles.sidebarHeader} id="nomeEmpresaDisplay">
-  <div style={styles.companyLogo}>
-    {(session?.user?.companyName || "SafraLog").charAt(0).toUpperCase()}
+  <div style={styles.sidebarTopSection}>
+    
+    {/* SELETOR DE EMPRESA (Aparece se tiver mais de uma) */}
+   {/* SELETOR DE EMPRESA */}
+{/* SELETOR DE EMPRESA */}
+{/* SELETOR DE EMPRESA */}
+{/* SELETOR DE EMPRESA COMPACTO */}
+{session?.user?.isOwner && (
+  <div style={{ padding: '0 24px 20px', position: 'relative' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+      <label style={{ fontSize: '0.6rem', color: '#4b5563', fontWeight: 'bold', textTransform: 'uppercase' }}>
+        Propriedade Ativa
+      </label>
+      <button 
+        onClick={() => setShowNovaEmpresaModal(true)}
+        style={{ background: 'none', border: 'none', color: 'var(--cor-primaria)', cursor: 'pointer', fontSize: '0.65rem' }}
+      >
+        + Nova Empresa
+      </button>
+    </div>
+
+    {/* BOTÃO DO SELETOR (O que aparece parado) */}
+    <div 
+      onClick={() => setShowCompanySelector(!showCompanySelector)}
+      style={{
+        background: '#161922',
+        border: '1px solid #1c1f26',
+        padding: '10px 12px',
+        borderRadius: '8px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        cursor: 'pointer',
+        transition: 'all 0.2s'
+      }}
+    >
+      <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: '600' }}>
+        {session?.user?.companyName || "Selecionar Empresa"}
+      </span>
+      <ChevronRight size={16} style={{ 
+        transform: showCompanySelector ? 'rotate(90deg)' : 'rotate(0deg)', 
+        transition: '0.2s',
+        color: 'var(--cor-primaria)'
+      }} />
+    </div>
+
+    {/* LISTA FLUTUANTE (Aparece ao clicar) */}
+    {showCompanySelector && (
+      <div style={{
+        position: 'absolute',
+        top: '100%',
+        left: '24px',
+        right: '24px',
+        background: '#1c1f26',
+        border: '1px solid #2d2d3d',
+        borderRadius: '8px',
+        marginTop: '5px',
+        zIndex: 100,
+        boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+        overflow: 'hidden'
+      }}>
+        {Array.isArray(minhasEmpresas) && minhasEmpresas.map((empresa) => (
+          <div 
+            key={empresa.id}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              borderBottom: '1px solid #2d2d3d',
+              background: session?.user?.companyId === empresa.id ? 'rgba(212, 169, 28, 0.05)' : 'transparent'
+            }}
+          >
+            <button
+              onClick={() => {
+                trocarEmpresaAtiva(empresa.id);
+                setShowCompanySelector(false);
+              }}
+              style={{
+                flex: 1,
+                padding: '12px',
+                background: 'none',
+                border: 'none',
+                color: session?.user?.companyId === empresa.id ? 'var(--cor-primaria)' : '#9ca3af',
+                textAlign: 'left',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                fontWeight: session?.user?.companyId === empresa.id ? 'bold' : 'normal'
+              }}
+            >
+              {empresa.name}
+            </button>
+
+            {/* Lixeira discreta na direita */}
+            {session?.user?.companyId !== empresa.id && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  excluirEmpresa(empresa.id, empresa.name);
+                }}
+                style={{
+                  padding: '12px',
+                  background: 'none',
+                  border: 'none',
+                  color: '#4b2a2a',
+                  cursor: 'pointer',
+                  transition: '0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#4b2a2a'}
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    )}
   </div>
-  {session?.user?.companyName || "SafraLog"}
-</div>
+)}
+
+    <div style={styles.sidebarHeader} id="nomeEmpresaDisplay">
+      <div style={styles.companyLogo}>
+        {(session?.user?.companyName || "SafraLog").charAt(0).toUpperCase()}
+      </div>
+      {session?.user?.companyName || "SafraLog"}
+    </div>
           <div style={styles.navLabel}>PRINCIPAL</div>
           <div style={styles.navMenu}>
-            <div 
+            {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
+             <div 
               style={{...styles.navItem, ...(activeTab === "tab-vendas" ? styles.navItemActive : {})}} 
               onClick={() => showTab("tab-vendas", "Nova Encomenda")}
             >
               <ShoppingCart size={18} /> Nova Encomenda
             </div>
+            )}
+            
             <div 
               style={{...styles.navItem, ...(activeTab === "tab-cartaz" ? styles.navItemActive : {})}} 
               onClick={() => showTab("tab-cartaz", "CARTAZ")}
@@ -317,12 +637,14 @@ export default function Home() {
               <ImageIcon size={18} /> Cartaz
             </div>
             
-            <div 
+            {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
+              <div 
               style={{...styles.navItem, ...(activeTab === "tab-pedidos" ? styles.navItemActive : {})}} 
               onClick={() => showTab("tab-pedidos", "Pedidos")}
             >
               <ClipboardList size={18} /> Histórico de Pedidos
             </div>
+            )}
 
             {(session?.user?.isOwner || session?.user?.role?.canCraft) && (
               <>
@@ -338,34 +660,50 @@ export default function Home() {
                 >
                   <Beef size={18} /> Painel de Produção
                 </div>
+                
               </>
             )}
 
             
 
-            {session?.user?.isOwner && (
+
               <>
                 <div style={styles.navLabel}>GESTAO</div>
-                <div 
-              style={{...styles.navItem, ...(activeTab === "tab-mercado" ? styles.navItemActive : {})}} 
-              onClick={() => showTab("tab-mercado", "Mercadão da Fronteira")}
-            >
-              <Store size={18} /> Mercadão
-            </div>
-                <div 
+               <div 
+  style={styles.navItem} 
+  onClick={() => router.push('/mercadao')}
+>
+  <Store size={18} /> Mercadão
+</div>
+                
+                {(session?.user?.isOwner || session?.user?.role?.canAdmin) && (
+              <div 
                   style={{...styles.navItem, ...(activeTab === "tab-roles" ? styles.navItemActive : {})}} 
                   onClick={() => showTab("tab-roles", "Gerenciar Cargos")}
                 >
                   <Shield size={18} /> Gerenciar Cargos
                 </div>
-                <div 
+            )}
+            {(session?.user?.isOwner || session?.user?.role?.canAdmin) && (
+              <div 
                   style={{...styles.navItem, ...(activeTab === "tab-equipe" ? styles.navItemActive : {})}} 
                   onClick={() => showTab("tab-equipe", "Gerenciar Equipe")}
                 >
                   <Users size={18} /> Gerenciar Equipe
                 </div>
-              </>
             )}
+                
+              </>
+              
+            {(session?.user?.isOwner || session?.user?.role?.canLogs) && (
+              <div 
+              style={{...styles.navItem, ...(activeTab === "tab-logs" ? styles.navItemActive : {})}} 
+              onClick={() => showTab("tab-logs", "Logs")}
+            >
+              <Scroll  size={18} /> Logs
+            </div>
+            )}
+            
 
             {session?.user?.name === "admin" && (
               <>
@@ -381,17 +719,27 @@ export default function Home() {
           </div>
         </div>
 
-        <div style={styles.userInfoBar}>
-          <div style={styles.userDetails}>
-            <span style={styles.userName}>{session?.user?.name}</span>
-            <span style={styles.userRole}>
-              {session?.user?.role?.name || (session?.user?.isOwner ? "Dono" : "Funcionário")}
-            </span>
-          </div>
-          <button style={styles.btnLogoutIcon} onClick={() => signOut()}>
-            <LogOut size={16} />
-          </button>
-        </div>
+        <div 
+  style={{ ...styles.userInfoBar, cursor: 'pointer' }} // Adicionamos o cursor pointer aqui
+  onClick={() => setShowPerfilModal(true)}            // Abre o modal ao clicar
+>
+  <div style={styles.userDetails}>
+    <span style={styles.userName}>{session?.user?.name}</span>
+    <span style={styles.userRole}>
+      {session?.user?.role?.name || (session?.user?.isOwner ? "Dono" : "Funcionário")}
+    </span>
+  </div>
+  
+  <button 
+    style={styles.btnLogoutIcon} 
+    onClick={(e) => {
+      e.stopPropagation(); // IMPORTANTE: Impede que o clique no botão de sair também abra o modal
+      signOut();
+    }}
+  >
+    <LogOut size={16} />
+  </button>
+</div>
       </nav>
 
       <main style={styles.mainContent}>
@@ -405,66 +753,8 @@ export default function Home() {
           </button>
         </header>
 
-<div id="tab-mercado" style={{...styles.pageContent, display: activeTab === "tab-mercado" ? "block" : "none"}}>
-  <div style={{...styles.grid2Cols, gap: '25px', alignItems: 'flex-start'}}>
-    
-    {/* COLUNA ESQUERDA: FORNECEDORES E PRODUTOS */}
-    <div style={{display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '85vh', overflowY: 'auto', paddingRight: '10px'}}>
-      
 
-      <section style={styles.card}>
-        <h4 style={{fontSize: '0.9rem', color: '#d4a91c', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px'}}>
-          <Users size={16}/> 1. Escolha um Fornecedor
-        </h4>
-        <div id="gridEmpresasMercado" style={{
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', 
-            gap: '12px'
-        }}>
-        </div>
-      </section>
 
-      <section style={styles.card}>
-        <h4 style={{fontSize: '0.9rem', color: '#00ff90', marginBottom: '15px'}}>
-          2. Catálogo de Produtos
-        </h4>
-        <div id="gridProdutosMercado" style={{
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', 
-            gap: '15px'
-        }}>
-           {/* Cards de produtos gerados pelo scripts.js */}
-        </div>
-      </section>
-    </div>
-
-    {/* COLUNA DIREITA: CARRINHO (STICKY) */}
-    <div style={{
-        position: 'sticky', 
-        top: '20px', 
-        background: '#161922', 
-        padding: '25px', 
-        borderRadius: '12px', 
-        border: '1px solid #3d2b1f', 
-        boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-        minWidth: '320px'
-    }}>
-      <h4 style={{fontSize: '0.85rem', color: '#d4a91c', marginBottom: '20px', borderBottom: '1px solid #3d2b1f', paddingBottom: '10px'}}>
-        📝 ORDEM DE COMPRA
-      </h4>
-      <div id="itensCarrinhoMercado" style={{maxHeight: '400px', overflowY: 'auto', marginBottom: '20px'}}>
-        <span style={{color: '#4b5563'}}>Selecione itens ao lado...</span>
-      </div>
-      <button 
-          style={{...styles.baseButton, ...styles.buttonPrimary, width: '100%', background: '#d4a91c', color: '#000', height: '45px'}}
-          onClick={() => window.app.enviarPropostaMercado()}
-      >
-        Enviar Proposta Comercial
-      </button>
-    </div>
-
-  </div>
-</div>
 {/* TAB CARTAZ CUSTOM */}
 <div id="tab-cartaz" style={{...styles.pageContent, display: activeTab === "tab-cartaz" ? "block" : "none"}}>
   <div style={{...styles.grid2Cols, gap: '24px', alignItems: 'flex-start'}}>
@@ -664,6 +954,60 @@ export default function Home() {
 
   </div>
 </div>
+{/* MODAL DE PERFIL / POMBO */}
+{showPerfilModal && (
+  <div style={{
+    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+  }}>
+    <div style={{
+      background: '#161625', width: '90%', maxWidth: '400px',
+      borderRadius: '16px', border: '1px solid #2d2d3d', overflow: 'hidden',
+      boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+    }}>
+      {/* Header do Modal */}
+      <div style={{ padding: '20px', background: '#1e1e2f', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2d2d3d' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <User size={20} color="var(--cor-primaria)" />
+          <h3 style={{ margin: 0, color: '#fff', fontSize: '1.1rem' }}>Meu Perfil</h3>
+        </div>
+        <button onClick={() => setShowPerfilModal(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>
+          <XCircle size={24} />
+        </button>
+      </div>
+
+      {/* Conteúdo */}
+      <div style={{ padding: '25px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <div style={{ width: '60px', height: '60px', background: 'var(--cor-primaria-bg)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px auto', color: 'var(--cor-primaria)', fontSize: '1.5rem', fontWeight: 'bold' }}>
+            {session?.user?.name.substring(0, 1).toUpperCase()}
+          </div>
+          <h4 style={{ margin: 0, color: '#fff' }}>{session?.user?.name}</h4>
+          <span style={{ fontSize: '0.8rem', color: '#666' }}>{session?.user?.isOwner ? "Proprietário" : "Colaborador"}</span>
+        </div>
+
+        <label style={{ color: '#888', fontSize: '0.8rem', marginBottom: '8px', display: 'block' }}>ID DO POMBO</label>
+        <input 
+          type="text" 
+          placeholder="Ex: 123"
+          value={meuPombo}
+          onChange={(e) => setMeuPombo(e.target.value)}
+          style={{ ...styles.roleSelect, width: '100%', padding: '12px', marginBottom: '20px', fontSize: '1rem', textAlign: 'center', letterSpacing: '2px' }}
+        />
+
+        <button 
+          className="primary" 
+          onClick={salvarConfigPombo}
+          disabled={loadingPombo}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+        >
+          {loadingPombo ? "Salvando..." : <><CheckCircle size={18} /> Salvar Alterações</>}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
         {/* Tab Vendas */}
         <div id="tab-vendas" style={{...styles.pageContent, display: activeTab === "tab-vendas" ? "flex" : "none"}}>
           <div style={styles.card}>
@@ -714,7 +1058,97 @@ export default function Home() {
             </button>
           </div>
         </div>
+<div id="tab-logs" style={{...styles.pageContent, display: activeTab === "tab-logs" ? "flex" : "none", flexDirection: 'column', gap: '24px'}}>
+  
+  {/* CARD DE FILTROS E PESQUISA */}
+  <div style={styles.card}>
+    <div style={styles.cardHeader}>
+      <div style={styles.headerIcon}><Search size={18} /></div>
+      <h3>Filtros de Auditoria</h3>
+    </div>
+    <div style={styles.grid2Cols}>
+      <div style={styles.inputWrapper}>
+        <label style={styles.labelInput}>Pesquisar Ação ou Detalhe</label>
+        <input 
+          type="text" 
+          id="searchLogInput" 
+          placeholder="Ex: Venda, Contratação, Erro..." 
+          style={styles.baseInput} 
+          onInput={(e) => window.app.carregarLogs(1, e.target.value)}
+        />
+      </div>
+      <div style={styles.inputWrapper}>
+        <label style={styles.labelInput}>Categoria</label>
+        <select 
+          id="categoriaLogSelect" 
+          style={styles.baseInput}
+          onChange={(e) => window.app.carregarLogs(1, document.getElementById('searchLogInput').value)}
+        >
+          <option value="">Todas as Categorias</option>
+          <option value="FINANCEIRO">Financeiro</option>
+          <option value="RH">Recursos Humanos</option>
+          <option value="LOGISTICA">Logística</option>
+          <option value="SISTEMA">Sistema</option>
+        </select>
+      </div>
+    </div>
+  </div>
 
+  {/* CARD DA TABELA DE LOGS */}
+  <div style={{...styles.card, flex: 1, minHeight: '400px'}}>
+    <div style={styles.cardHeader}>
+      <div style={styles.headerIcon}><History size={18} /></div>
+      <h3>Histórico de Atividades</h3>
+    </div>
+
+    <div style={{overflowX: 'auto', marginTop: '20px'}}>
+      <table style={{width: '100%', borderCollapse: 'collapse', color: '#fff'}}>
+        <thead>
+          <tr style={{textAlign: 'left', borderBottom: `1px solid ${styles.divider.backgroundColor || '#1c1c26'}`, color: '#4b5563', fontSize: '0.8rem'}}>
+            <th style={{padding: '12px 8px'}}>DATA/HORA</th>
+            <th style={{padding: '12px 8px'}}>AÇÃO</th>
+            <th style={{padding: '12px 8px'}}>DETALHES</th>
+            <th style={{padding: '12px 8px'}}>OPERADOR</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaLogsCorpo">
+          {/* Preenchido dinamicamente via JS */}
+        </tbody>
+      </table>
+    </div>
+
+    {/* PAGINAÇÃO ESTILIZADA */}
+    <div style={{
+      display: 'flex', 
+      justifyContent: 'space-between', 
+      alignItems: 'center', 
+      marginTop: 'auto', 
+      paddingTop: '24px',
+      borderTop: `1px solid ${styles.divider.backgroundColor || '#1c1c26'}`
+    }}>
+      <span id="paginacaoInfo" style={{fontSize: '0.85rem', color: '#4b5563', fontWeight: 'bold'}}>
+        Página 1 de 1
+      </span>
+      
+      <div style={{display: 'flex', gap: '12px'}}>
+        <button 
+          id="btnPrevLog" 
+          onClick={() => window.app.mudarPaginaLog(-1)} 
+          style={{...styles.baseButton, padding: '8px 16px', fontSize: '0.8rem', opacity: 0.8}}
+        >
+          Anterior
+        </button>
+        <button 
+          id="btnNextLog" 
+          onClick={() => window.app.mudarPaginaLog(1)} 
+          style={{...styles.baseButton, ...styles.buttonPrimary, padding: '8px 16px', fontSize: '0.8rem'}}
+        >
+          Próximo
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
         {/* Tab Pedidos */}
         <div id="tab-pedidos" style={{...styles.pageContent, display: activeTab === "tab-pedidos" ? "block" : "none"}}>
           <div style={styles.card}>
@@ -814,65 +1248,195 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Tab Equipe */}
-        <div id="tab-equipe" style={{...styles.pageContent, display: activeTab === "tab-equipe" ? "block" : "none"}}>
-          {hireRequests.length > 0 && (
-            <div style={{...styles.card, border: '1px solid var(--cor-destaque-bg)'}}>
-              <div style={styles.cardHeader}>
-                <div style={{...styles.headerIcon, background: 'var(--cor-destaque-bg)', color: 'var(--cor-destaque)'}}><UserPlus size={18} /></div>
-                <h3 style={{color: 'var(--cor-destaque)'}}>Solicitações Pendentes</h3>
-              </div>
-              <div style={styles.teamList}>
-                {hireRequests.map(req => (
-                  <div key={req.id} style={styles.teamItem}>
-                    <div style={{flex: 1}}>
-                      <div style={styles.memberName}>{req.user.username}</div>
-                      <div style={styles.memberMeta}>Deseja ingressar na empresa</div>
-                    </div>
-                    <div style={styles.actionGroup}>
-                      <button style={styles.btnApprove} onClick={() => gerenciarSolicitacao(req.id, 'approve')}>Aprovar</button>
-                      <button style={styles.btnReject} onClick={() => gerenciarSolicitacao(req.id, 'reject')}>Rejeitar</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+<div id="tab-equipe" style={{...styles.pageContent, display: activeTab === "tab-equipe" ? "block" : "none"}}>
+  
+  {/* HEADER DA TAB COM BOTÃO DE ADICIONAR */}
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+    <div>
+      <h2 style={{ color: '#fff', margin: 0, fontSize: '1.5rem' }}>Gerenciamento de Equipe</h2>
+      <p style={{ color: '#666', margin: '5px 0 0 0', fontSize: '0.85rem' }}>Contrate, gerencie cargos ou desligue colaboradores.</p>
+    </div>
+    <button 
+      onClick={() => window.app.abrirModalContratacao()}
+      style={{ 
+        background: 'var(--cor-primaria)', 
+        color: '#fff', 
+        border: 'none', 
+        padding: '12px 20px', 
+        borderRadius: '8px', 
+        fontWeight: '700', 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '8px', 
+        cursor: 'pointer',
+        boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+      }}
+    >
+      <UserPlus size={18} /> Contratar Funcionário
+    </button>
+  </div>
 
-          <div style={styles.card}>
-            <div style={styles.cardHeader}>
-              <div style={styles.headerIcon}><Users size={18} /></div>
-              <h3>Colaboradores Ativos</h3>
+  {/* SEÇÃO DE SOLICITAÇÕES PENDENTES (Apenas se houver) */}
+  {hireRequests.length > 0 && (
+    <div style={{...styles.card, borderLeft: '4px solid var(--cor-destaque)', marginBottom: '30px', background: 'rgba(212,169,28,0.03)'}}>
+      <div style={styles.cardHeader}>
+        <div style={{...styles.headerIcon, background: 'var(--cor-destaque-bg)', color: 'var(--cor-destaque)'}}><UserPlus size={18} /></div>
+        <h3 style={{color: 'var(--cor-destaque)'}}>Solicitações de Ingresso ({hireRequests.length})</h3>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '15px', marginTop: '15px' }}>
+        {hireRequests.map(req => (
+          <div key={req.id} style={{ background: '#161922', padding: '15px', borderRadius: '12px', border: '1px solid #2d2d2d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ color: '#fff', fontWeight: 'bold' }}>{req.user.username}</div>
+              <div style={{ color: '#555', fontSize: '0.75rem' }}>Solicitou entrada agora</div>
             </div>
-            <div style={styles.teamList}>
-              {teamList.map(m => (
-                <div key={m.id} style={styles.teamItem}>
-                  <div style={{flex: 1}}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                      <span style={styles.memberName}>{m.name}</span>
-                      <span style={styles.badgeRole}>{m.role?.name || "Sem Cargo"}</span>
-                    </div>
-                    <div style={{marginTop: '12px'}}>
-                      <select 
-                        style={styles.roleSelect}
-                        value={String(m.roleId ?? "")} 
-                        onChange={(e) => mudarRoleUsuario(m.id, e.target.value)}
-                      >
-                        <option value="">🚫 Remover Cargo</option>
-                        {roleList.map(role => (
-                          <option key={role.id} value={String(role.id)}>{role.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <button style={styles.btnActionDelete} onClick={() => removerMembro(m.id)} disabled={loadingAction}>
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              ))}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button style={{ background: '#00ff90', border: 'none', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontWeight: 'bold' }} onClick={() => gerenciarSolicitacao(req.id, 'approve')}>Aceitar</button>
+              <button style={{ background: '#ff4c4c', border: 'none', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontWeight: 'bold', color: '#fff' }} onClick={() => gerenciarSolicitacao(req.id, 'reject')}>Recusar</button>
             </div>
           </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  {/* TABELA DE COLABORADORES ATIVOS */}
+  <div style={styles.card}>
+    <div style={styles.cardHeader}>
+      <div style={styles.headerIcon}><Users size={18} /></div>
+      <h3>Colaboradores Ativos</h3>
+    </div>
+    
+    <div style={{ overflowX: 'auto', marginTop: '20px' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+        <thead>
+          <tr style={{ borderBottom: '2px solid #2d2d2d', color: '#666', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            <th style={{ padding: '15px' }}>Colaborador</th>
+            <th style={{ padding: '15px' }}>Cargo Atual</th>
+            <th style={{ padding: '15px' }}>Alterar Cargo</th>
+            <th style={{ padding: '15px', textAlign: 'right' }}>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {teamList.map(m => (
+            <tr key={m.id} style={{ borderBottom: '1px solid #1c1f26', transition: '0.3s' }}>
+              <td style={{ padding: '15px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '35px', height: '35px', borderRadius: '50%', background: 'var(--cor-primaria-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cor-primaria)', fontWeight: 'bold' }}>
+                    {m.username?.substring(0, 2).toUpperCase()}
+                  </div>
+                  <span style={{ fontWeight: '600', color: '#fff' }}>{m.username}</span>
+                </div>
+              </td>
+              <td style={{ padding: '15px' }}>
+                <span style={{ 
+                  background: m.role ? 'rgba(0,255,144,0.1)' : '#2d2d2d', 
+                  color: m.role ? '#00ff90' : '#888',
+                  padding: '4px 10px', 
+                  borderRadius: '6px', 
+                  fontSize: '0.75rem', 
+                  fontWeight: 'bold',
+                  border: m.role ? '1px solid rgba(0,255,144,0.2)' : 'none'
+                }}>
+                  {m.role?.name || "Sem Cargo"}
+                </span>
+              </td>
+              <td style={{ padding: '15px' }}>
+                <select 
+                  style={{ ...styles.roleSelect, width: '180px', padding: '6px' }}
+                  value={String(m.roleId ?? "")} 
+                  onChange={(e) => mudarRoleUsuario(m.id, e.target.value)}
+                >
+                  <option value="">🚫 Remover Cargo</option>
+                  {roleList.map(role => (
+                    <option key={role.id} value={String(role.id)}>{role.name}</option>
+                  ))}
+                </select>
+              </td>
+              <td style={{ padding: '15px', textAlign: 'right' }}>
+  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+    {/* BOTÃO DE RESETAR SENHA */}
+    <button 
+      style={{ background: 'none', border: 'none', color: '#f1c40f', cursor: 'pointer', padding: '8px', borderRadius: '6px' }} 
+      onClick={() => window.app.resetarSenhaFuncionario(m.id, m.username)}
+      title="Resetar Senha"
+    >
+      <Key size={20} />
+    </button>
+
+    {/* BOTÃO DE DELETAR */}
+    <button 
+      style={{ background: 'none', border: 'none', color: '#ff4c4c', cursor: 'pointer', padding: '8px', borderRadius: '6px' }} 
+      onClick={() => removerMembro(m.id)}
+      title="Demitir Funcionário"
+    >
+      <Trash2 size={20} />
+    </button>
+  </div>
+</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {teamList.length === 0 && <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>Nenhum colaborador ativo na empresa.</p>}
+    </div>
+  </div>
+
+  {/* MODAL DE CONTRATAÇÃO (Adicione isto ao final do return principal do page.js) */}
+  <div id="modalContratacao" style={{ 
+    display: 'none', 
+    position: 'fixed', 
+    top: 0, left: 0, 
+    width: '100%', height: '100%', 
+    background: 'rgba(0,0,0,0.85)', 
+    backdropFilter: 'blur(5px)',
+    zIndex: 9999, 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  }}>
+    <div style={{ background: '#161922', padding: '35px', borderRadius: '20px', width: '420px', border: '1px solid #333', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
+      <div style={{ textAlign: 'center', marginBottom: '25px' }}>
+        <div style={{ background: 'var(--cor-primaria-bg)', width: '60px', height: '60px', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--cor-primaria)', margin: '0 auto 15px' }}>
+          <UserPlus size={30} />
         </div>
+        <h3 style={{ color: '#fff', fontSize: '1.4rem', margin: 0 }}>Contratar Funcionário</h3>
+        <p style={{ color: '#666', fontSize: '0.85rem', marginTop: '5px' }}>Crie uma nova conta de acesso para sua equipe.</p>
+      </div>
+      
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ color: '#aaa', fontSize: '0.75rem', fontWeight: 'bold', display: 'block', marginBottom: '8px', textTransform: 'uppercase' }}>Nome de Usuário (Login)</label>
+        <input id="new_func_username" type="text" placeholder="ex: marcos_silva" style={{ width: '100%', background: '#0d0f14', border: '1px solid #333', padding: '12px', borderRadius: '8px', color: '#fff', outline: 'none' }} />
+      </div>
+
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ color: '#aaa', fontSize: '0.75rem', fontWeight: 'bold', display: 'block', marginBottom: '8px', textTransform: 'uppercase' }}>Cargo Inicial</label>
+        <select id="new_func_role" style={{ width: '100%', background: '#0d0f14', border: '1px solid #333', padding: '12px', borderRadius: '8px', color: '#fff', outline: 'none' }}>
+          {roleList.map(role => <option key={role.id} value={role.id}>{role.name}</option>)}
+        </select>
+      </div>
+
+      <div style={{ background: '#0d0f14', padding: '15px', borderRadius: '10px', border: '1px dashed #333', marginBottom: '25px' }}>
+        <label style={{ color: 'var(--cor-primaria)', fontSize: '0.7rem', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>SENHA GERADA AUTOMATICAMENTE</label>
+        <div id="new_func_pass_display" style={{ color: '#fff', fontFamily: 'monospace', fontSize: '1.2rem', letterSpacing: '2px', fontWeight: 'bold' }}>********</div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <button 
+          onClick={() => document.getElementById('modalContratacao').style.display='none'}
+          style={{ flex: 1, background: '#2d2d2d', color: '#fff', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}
+        >
+          Cancelar
+        </button>
+        <button 
+          onClick={() => window.app.executarContratacao()}
+          style={{ flex: 2, background: 'var(--cor-primaria)', color: '#fff', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}
+        >
+          Confirmar e Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
         {/* Tab Roles */}
         <div id="tab-roles" style={{...styles.pageContent, display: activeTab === "tab-roles" ? "flex" : "none"}}>
@@ -1034,7 +1598,55 @@ export default function Home() {
           </div>
         </div>
       </div>
+      {showNovaEmpresaModal && (
+  <div style={{
+    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+  }}>
+    <div style={{ background: '#161625', width: '90%', maxWidth: '400px', borderRadius: '16px', border: '1px solid #2d2d3d', padding: '25px' }}>
+      <h3 style={{ color: '#fff', marginBottom: '20px' }}>Nova Propriedade</h3>
+      
+      <div style={styles.inputWrapper}>
+        <label style={styles.labelInput}>Nome da Fazenda/Empresa</label>
+        <input 
+          type="text" 
+          placeholder="Ex: Rancho Rio Doce" 
+          style={{...styles.baseInput, width: '100%', marginBottom: '15px'}}
+          onChange={(e) => setNovaEmpresaData({...novaEmpresaData, name: e.target.value})}
+        />
+      </div>
+
+      <div style={styles.inputWrapper}>
+        <label style={styles.labelInput}>Cor de Identidade</label>
+        <input 
+          type="color" 
+          style={{...styles.colorPicker, marginBottom: '20px'}}
+          value={novaEmpresaData.colorPrimary}
+          onChange={(e) => setNovaEmpresaData({...novaEmpresaData, colorPrimary: e.target.value})}
+        />
+      </div>
+
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button 
+          onClick={() => setShowNovaEmpresaModal(false)}
+          style={{...styles.baseButton, ...styles.buttonOutline, flex: 1}}
+        >
+          Cancelar
+        </button>
+        <button 
+          onClick={criarNovaEmpresa}
+          disabled={loadingAction}
+          style={{...styles.baseButton, ...styles.buttonPrimary, flex: 2}}
+        >
+          {loadingAction ? "Criando..." : "Fundar Empresa"}
+        </button>
+      </div>
     </div>
+  </div>
+)}
+    </div>
+    
   );
 }
 
@@ -1057,14 +1669,14 @@ const styles = {
     height: '100vh',
     width: '100vw',
     backgroundColor: '#07080a',
-    color: '#d4a91c',
+    color: 'var(--cor-primaria, #d4a91c)',
     gap: '20px'
   },
   loaderSpinner: {
     width: '40px',
     height: '40px',
-    border: '3px solid rgba(212,169,28,0.1)',
-    borderTop: '3px solid #d4a91c',
+    border: '3px solid var(--cor-primaria-bg, rgba(212, 169, 28, 0.1))',
+    borderTop: '3px solid var(--cor-primaria, #d4a91c)',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite'
   },
@@ -1144,8 +1756,8 @@ const styles = {
     cursor: 'pointer'
   },
   navItemMasterActive: {
-    background: 'rgba(241, 196, 15, 0.1)',
-    color: '#f1c40f',
+    background: 'var(--cor-primaria-bg, rgba(212, 169, 28, 0.1))',
+    color: 'var(--cor-primaria, #d4a91c)',
     fontWeight: '600'
   },
 
@@ -1223,6 +1835,7 @@ const styles = {
 
   // CARDS & COMPONENTS
   pageContent: {
+    display: 'flex',
     flexDirection: 'column',
     gap: '24px'
   },
@@ -1242,8 +1855,8 @@ const styles = {
   headerIcon: {
     width: '36px',
     height: '36px',
-    background: 'var(--cor-primaria-bg)',
-    color: 'var(--cor-primaria)',
+    background: 'var(--cor-primaria-bg, rgba(212, 169, 28, 0.1))',
+    color: 'var(--cor-primaria, #d4a91c)',
     borderRadius: '10px',
     display: 'flex',
     alignItems: 'center',
@@ -1273,9 +1886,6 @@ const styles = {
     fontSize: '0.9rem',
     outline: 'none',
     transition: 'border-color 0.2s',
-    '&:focus': {
-        borderColor: 'var(--cor-primaria)'
-    }
   },
   labelInput: {
     fontSize: '0.7rem',
@@ -1304,17 +1914,12 @@ const styles = {
   permList: {
     gap: '10px',
     display: 'flex',
-
   },
   tinyBadge: {
     background: '#252525',
-    padding: '5px',
+    padding: '5px 15px',
     borderRadius: '5px',
-    paddingLeft: '15px',
-    paddingRight: '15px',
-
   },
-
   btnMaster: {
     background: 'var(--cor-primaria, #d4a91c)',
     color: '#000'
@@ -1372,10 +1977,6 @@ const styles = {
     padding: '8px',
     borderRadius: '8px',
     transition: '0.2s',
-    '&:hover': {
-        color: '#ef4444',
-        background: 'rgba(239, 68, 68, 0.1)'
-    }
   },
 
   // EQUIPE E CARGOS
@@ -1391,8 +1992,8 @@ const styles = {
   },
   memberName: { color: '#fff', fontWeight: '600' },
   badgeRole: {
-    background: 'var(--cor-primaria-bg)',
-    color: 'var(--cor-primaria)',
+    background: 'var(--cor-primaria-bg, rgba(212, 169, 28, 0.1))',
+    color: 'var(--cor-primaria, #d4a91c)',
     fontSize: '0.65rem',
     fontWeight: '800',
     padding: '4px 10px',
@@ -1409,11 +2010,11 @@ const styles = {
     cursor: 'pointer'
   },
   checkboxGrid: {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(4, max-content)',
-  gap: '10px 40px',
-  marginTop: '12px'
-},
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, max-content)',
+    gap: '10px 40px',
+    marginTop: '12px'
+  },
   checkLabel: {
     display: 'flex',
     alignItems: 'center',
@@ -1426,10 +2027,10 @@ const styles = {
   // ADMIN
   keyCode: {
     fontFamily: 'monospace',
-    color: '#f1c40f',
+    color: 'var(--cor-primaria, #d4a91c)',
     fontSize: '1rem',
     letterSpacing: '2px',
-    background: 'rgba(241, 196, 15, 0.05)',
+    background: 'var(--cor-primaria-bg, rgba(212, 169, 28, 0.1))',
     padding: '8px 16px',
     borderRadius: '8px'
   },

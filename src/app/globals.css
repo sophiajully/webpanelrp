@@ -44,6 +44,15 @@
   background: #0a0b10;      /* Cor de fundo do layout wrapper */
 }
 
+
+.user-info-card {
+  transition: all 0.2s ease !important;
+}
+
+.user-info-card:hover {
+  background-color: #1c202b !important; /* Cor de fundo ao passar o mouse */
+  border-color: var(--cor-primaria) !important; /* Opcional: brilha a borda */
+}
 /* A parte que desliza (Thumb) */
 ::-webkit-scrollbar-thumb {
   background: #1f2430;      /* Uma cor um pouco mais clara que o fundo */
