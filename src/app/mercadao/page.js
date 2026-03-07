@@ -21,8 +21,10 @@ export default function MercadaoGeral() {
       const data = await res.json();
       
       // Filtra a própria empresa
-      const filtradas = data.companies.filter(c => String(c.id) !== String(session?.user?.companyId));
-      
+      const filtradas = data.companies.filter(c => 
+    String(c.id) !== String(session?.user?.companyId) && 
+    c._count.crafts > 0
+)
       setEmpresas(filtradas);
       setTotalPages(data.meta.totalPages);
     } catch (err) {

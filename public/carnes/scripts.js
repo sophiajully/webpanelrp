@@ -207,20 +207,6 @@ async salvarConfig(companyId) {
                 })
             });
 
-            // 2. Dispara Webhook para o Discord (Fila/Queue)
-            if (this.config.webhookLogs) {
-                const corBadge = action.includes('ERRO') || action.includes('REMOVIDO') ? 0xef4444 : 0xd4a91c;
-                
-                await this.enviarWebhook(this.config.webhookLogs, {
-                    title: `[${category}] ${action}`,
-                    color: corBadge,
-                    description: details,
-                    timestamp: new Date().toISOString(),
-                    footer: { text: `Sistema de Auditoria - ${this.config.nomeEmpresa}` }
-                });
-            }
-
-            // Se a aba de logs estiver aberta, recarrega a lista para mostrar o novo log
             if (document.getElementById('tab-logs')?.style.display !== 'none') {
                 this.carregarLogs(1);
             }

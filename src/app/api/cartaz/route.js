@@ -18,14 +18,12 @@ export async function GET(request) {
   const servicos = limparTexto(searchParams.get('servicos') || 'GADO • CAVALOS • COLHEITA');
   const rodape = limparTexto(searchParams.get('rodape') || 'REGISTRADO NO DEPARTAMENTO DE AGRICULTURA');
   const selo = limparTexto(searchParams.get('selo') || 'ORIGINAL');
-  const dataEst = limparTexto(searchParams.get('data') || 'ESTABELECIDO EM 1899');
+  const dataEst = limparTexto(searchParams.get('data') || 'EST. 1899');
 
   try {
-    // Carregando a fonte
     const fontPath = path.join(process.cwd(), 'public', 'PlayfairDisplay-Bold.ttf');
     const fontData = fs.readFileSync(fontPath);
 
-    // O ImageResponse substitui o Satori e o Resvg de uma vez só
     return new ImageResponse(
       (
         <div style={{
@@ -34,127 +32,138 @@ export async function GET(request) {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          backgroundColor: '#e6d5b8',
-          padding: '40px',
-          border: '20px solid #3d2b1f',
-          color: '#3d2b1f',
+          backgroundColor: '#e6d5b8', // Cor de papel envelhecido sólido e seguro
+          padding: '25px',
+          color: '#2a1a10',
           fontFamily: 'Playfair',
-          position: 'relative',
         }}>
-          {/* Borda Decorativa Interna */}
-          <div style={{
-            position: 'absolute',
-            top: '10px', left: '10px', right: '10px', bottom: '10px',
-            border: '2px solid #3d2b1f',
-            display: 'flex',
-          }} />
           
-          {/* Cabeçalho */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '40px' }}>
-            <span style={{ display: 'flex', fontSize: '16px', letterSpacing: '4px', marginBottom: '10px' }}>{dataEst}</span>
-            <div style={{ display: 'flex', width: '180px', height: '2px', backgroundColor: '#3d2b1f', marginBottom: '20px' }} />
-            
-            <h1 style={{ 
-              display: 'flex',
-              fontSize: '70px', 
-              margin: '0', 
-              lineHeight: '0.8',
-              textAlign: 'center',
-            }}>
-              {titulo}
-            </h1>
-            
-            <div style={{ 
-              display: 'flex',
-              marginTop: '20px',
-              background: '#3d2b1f',
-              padding: '8px 25px'
-            }}>
-              <span style={{ color: '#e6d5b8', fontSize: '20px', letterSpacing: '3px' }}>{subtitulo}</span>
-            </div>
-          </div>
-
-          {/* Corpo Principal */}
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            width: '100%', 
-            marginTop: '60px',
-            padding: '0 30px',
-            gap: '40px'
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <span style={{ display: 'flex', fontSize: '13px', fontWeight: 'bold' }}>NOME DA PROPRIEDADE</span>
-              <span style={{ display: 'flex', fontSize: '42px', textAlign: 'center', lineHeight: '1.1', marginTop: '5px' }}>
-                {fazenda}
-              </span>
-              <div style={{ display: 'flex', flexDirection: 'column', width: '100%', marginTop: '10px' }}>
-                 <div style={{ display: 'flex', width: '100%', height: '1px', backgroundColor: '#3d2b1f' }} />
-                 <div style={{ display: 'flex', width: '100%', height: '1px', backgroundColor: '#3d2b1f', marginTop: '3px' }} />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', width: '45%' }}>
-                <span style={{ display: 'flex', fontSize: '11px', fontWeight: 'bold' }}>RESPONSAVEL</span>
-                <div style={{ display: 'flex', borderBottom: '2px solid #3d2b1f', paddingBottom: '5px' }}>
-                  <span style={{ fontSize: '24px' }}>{dono}</span>
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', width: '45%' }}>
-                <span style={{ display: 'flex', fontSize: '11px', fontWeight: 'bold' }}>CONTATO</span>
-                <div style={{ display: 'flex', borderBottom: '2px solid #3d2b1f', paddingBottom: '5px' }}>
-                  <span style={{ fontSize: '24px' }}>{contato}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Rodapé */}
-          <div style={{ 
-            marginTop: 'auto', 
-            marginBottom: '40px',
-            display: 'flex', 
+          {/* MOLDURA EXTERNA */}
+          <div style={{
+            display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '15px'
+            width: '100%',
+            height: '100%',
+            border: '6px solid #2a1a10',
+            padding: '8px',
+            position: 'relative'
           }}>
-            <div style={{ display: 'flex', textAlign: 'center' }}>
-               <span style={{ fontSize: '20px', letterSpacing: '3px', fontWeight: 'bold' }}>* {servicos} *</span>
-            </div>
             
-            <div style={{ 
+            {/* MOLDURA INTERNA */}
+            <div style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              width: '85%',
-              borderTop: '1px solid #3d2b1f',
-              paddingTop: '10px',
+              width: '100%',
+              height: '100%',
+              border: '2px solid #2a1a10',
+              padding: '40px',
+              position: 'relative'
             }}>
-              <span style={{ fontSize: '10px', textAlign: 'center', fontStyle: 'italic', opacity: 0.9 }}>
-                {rodape}
-              </span>
-            </div>
-          </div>
 
-          {/* Selo Carimbo */}
-          <div style={{
-            position: 'absolute',
-            bottom: '30px',
-            right: '30px',
-            width: '80px',
-            height: '80px',
-            border: '2px solid #3d2b1f',
-            borderRadius: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transform: 'rotate(-15deg)',
-            opacity: 0.6,
-            padding: '10px'
-          }}>
-            <span style={{ fontSize: '10px', fontWeight: 'bold', textAlign: 'center' }}>{selo}</span>
+              {/* CANTONEIRAS GEOMÉTRICAS (Não bugam como emojis) */}
+              <div style={{ position: 'absolute', top: 10, left: 10, width: 20, height: 20, border: '2px solid #2a1a10', transform: 'rotate(45deg)', display: 'flex' }} />
+              <div style={{ position: 'absolute', top: 10, right: 10, width: 20, height: 20, border: '2px solid #2a1a10', transform: 'rotate(45deg)', display: 'flex' }} />
+              <div style={{ position: 'absolute', bottom: 10, left: 10, width: 20, height: 20, border: '2px solid #2a1a10', transform: 'rotate(45deg)', display: 'flex' }} />
+              <div style={{ position: 'absolute', bottom: 10, right: 10, width: 20, height: 20, border: '2px solid #2a1a10', transform: 'rotate(45deg)', display: 'flex' }} />
+
+              {/* CABEÇALHO */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
+                <div style={{ width: '40px', height: '2px', backgroundColor: '#2a1a10', display: 'flex' }} />
+                <span style={{ fontSize: '18px', letterSpacing: '4px', fontWeight: 'bold' }}>{dataEst}</span>
+                <div style={{ width: '40px', height: '2px', backgroundColor: '#2a1a10', display: 'flex' }} />
+              </div>
+
+              <span style={{ fontSize: '35px', letterSpacing: '15px', marginBottom: '5px' }}>{titulo}</span>
+              
+              <h1 style={{ 
+                fontSize: '80px', 
+                margin: '10px 0', 
+                textAlign: 'center',
+                lineHeight: '0.8',
+                display: 'flex'
+              }}>
+                {fazenda}
+              </h1>
+
+              {/* FAIXA DE SUBTÍTULO (Display Flex adicionado para corrigir o erro) */}
+              <div style={{
+                display: 'flex',
+                backgroundColor: '#2a1a10',
+                padding: '5px 30px',
+                marginTop: '10px'
+              }}>
+                <span style={{ fontSize: '20px', color: '#e6d5b8', letterSpacing: '5px' }}>{subtitulo}</span>
+              </div>
+
+              {/* SEPARADOR COM DIAMANTE */}
+              <div style={{ display: 'flex', alignItems: 'center', width: '100%', margin: '45px 0' }}>
+                <div style={{ flex: 1, height: '2px', backgroundColor: '#2a1a10', display: 'flex' }} />
+                <div style={{ width: '12px', height: '12px', backgroundColor: '#2a1a10', transform: 'rotate(45deg)', margin: '0 15px', display: 'flex' }} />
+                <div style={{ flex: 1, height: '2px', backgroundColor: '#2a1a10', display: 'flex' }} />
+              </div>
+
+              {/* CONTEÚDO */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '35px', width: '100%' }}>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                   <span style={{ fontSize: '12px', letterSpacing: '3px', marginBottom: '5px' }}>PROPRIETÁRIO RESPONSÁVEL</span>
+                   <span style={{ fontSize: '40px', fontWeight: 'bold' }}>{dono}</span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+                   <span style={{ fontSize: '12px', letterSpacing: '3px', marginBottom: '10px' }}>PRODUÇÃO & CATALOGO</span>
+                   <div style={{ display: 'flex', width: '80%', height: '1px', backgroundColor: '#2a1a10', marginBottom: '10px', opacity: 0.3 }} />
+                   <span style={{ fontSize: '26px', textAlign: 'center', maxWidth: '90%', lineHeight: '1.3', display: 'flex' }}>
+                     {servicos}
+                   </span>
+                   <div style={{ display: 'flex', width: '80%', height: '1px', backgroundColor: '#2a1a10', marginTop: '15px', opacity: 0.3 }} />
+                </div>
+              </div>
+
+              {/* CAIXA DE CONTATO */}
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center',
+                marginTop: '40px',
+                padding: '10px 40px',
+                border: '3px solid #2a1a10'
+              }}>
+                 <span style={{ fontSize: '11px', letterSpacing: '2px' }}>CONTATO VIA POMBO</span>
+                 <span style={{ fontSize: '34px', fontWeight: 'bold' }}># {contato}</span>
+              </div>
+
+              {/* RODAPÉ */}
+              <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{ fontSize: '10px', textAlign: 'center', opacity: 0.7, maxWidth: '70%', letterSpacing: '1px' }}>
+                  {rodape}
+                </span>
+              </div>
+
+              {/* CARIMBO (Display Flex garantido) */}
+              <div style={{
+                position: 'absolute',
+                bottom: '30px',
+                right: '30px',
+                width: '110px',
+                height: '110px',
+                border: '4px solid #7a1c1c',
+                borderRadius: '60px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transform: 'rotate(-15deg)',
+                color: '#7a1c1c',
+              }}>
+                <span style={{ fontSize: '10px', fontWeight: 'bold' }}>QUALIDADE</span>
+                <span style={{ fontSize: '20px', fontWeight: 'bold' }}>{selo}</span>
+                <span style={{ fontSize: '10px', fontWeight: 'bold' }}>GARANTIDA</span>
+              </div>
+
+            </div>
           </div>
         </div>
       ),
@@ -173,6 +182,7 @@ export async function GET(request) {
     );
 
   } catch (err) {
+    console.error(err);
     return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
