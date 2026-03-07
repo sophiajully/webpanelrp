@@ -6,13 +6,13 @@ import { prisma } from "@/lib/prisma";
 export async function DELETE(req) {
   const session = await getServerSession(authOptions);
 
-  // Segurança: Só o admin master pode deletar chaves
+  
   if (!session || session.user.name !== "admin") {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
   try {
-    // Pegamos o ID da URL (ex: /api/keys?id=123)
+    
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
@@ -37,7 +37,7 @@ export async function DELETE(req) {
 export async function POST(req) {
   const session = await getServerSession(authOptions);
 
-  // Segurança: Só o admin master pode gerar chaves
+  
   if (!session || session.user.name !== "admin") {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
@@ -45,7 +45,7 @@ export async function POST(req) {
   try {
     const { days } = await req.json();
     
-    // Gerar uma chave aleatória estilo XXXX-XXXX-XXXX
+    
     const randomKey = Math.random().toString(36).substring(2, 6).toUpperCase() + "-" +
                       Math.random().toString(36).substring(2, 6).toUpperCase() + "-" +
                       Math.random().toString(36).substring(2, 6).toUpperCase();

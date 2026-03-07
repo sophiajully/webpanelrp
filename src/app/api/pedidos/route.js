@@ -1,11 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-// --- GET: Listar todos os pedidos da empresa do usuário ---
 export async function GET(req) {
   try {
     const token = await getToken({ req });
+ const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
 
     if (!token || !token.companyId) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
@@ -13,10 +18,10 @@ export async function GET(req) {
 
     const pedidos = await prisma.pedido.findMany({
       where: { companyId: token.companyId },
-      orderBy: { id: 'desc' } // Opcional: traz os mais recentes primeiro
+      orderBy: { id: 'desc' } 
     });
 
-    // Como os produtos estão salvos como String (JSON), você pode fazer o parse aqui ou no front
+    
     const pedidosFormatados = pedidos.map(p => ({
       ...p,
       produtos: JSON.parse(p.produtos)
@@ -29,7 +34,7 @@ export async function GET(req) {
   }
 }
 
-// --- PATCH: Atualizar um pedido (ex: editar itens ou nome) ---
+
 export async function PATCH(req) {
   try {
     const token = await getToken({ req });
@@ -39,7 +44,7 @@ export async function PATCH(req) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
-    // Validação de Propriedade: Garante que o pedido pertence à empresa
+    
     const pedidoExistente = await prisma.pedido.findUnique({ where: { id } });
     
     if (!pedidoExistente || pedidoExistente.companyId !== token.companyId) {
@@ -62,7 +67,7 @@ export async function PATCH(req) {
   }
 }
 
-// --- DELETE: Remover um pedido ---
+
 export async function DELETE(req) {
   try {
     const token = await getToken({ req });
@@ -73,7 +78,7 @@ export async function DELETE(req) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
-    // Validação de Propriedade
+    
     const pedido = await prisma.pedido.findUnique({ where: { id } });
 
     if (!pedido || pedido.companyId !== token.companyId) {
@@ -88,7 +93,7 @@ export async function DELETE(req) {
   }
 }
 
-// --- POST: Criar novo pedido (Apenas se você precisar desta rota no futuro) ---
+
 export async function POST(req) {
   try {
     const token = await getToken({ req });

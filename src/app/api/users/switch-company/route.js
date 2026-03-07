@@ -12,7 +12,7 @@ export async function PATCH(req) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
-    // Validação: Verifica se o usuário realmente é dono da empresa para a qual quer trocar
+    
     const company = await prisma.company.findFirst({
       where: {
         id: companyId,
@@ -24,8 +24,8 @@ export async function PATCH(req) {
       return NextResponse.json({ error: "Empresa não encontrada ou não pertence a você" }, { status: 403 });
     }
 
-    // Atualiza o campo companyId no model User
-    // Isso define qual empresa o dono está "gerenciando" no momento
+    
+    
     await prisma.user.update({
       where: { id: session.user.id },
       data: { companyId: companyId }

@@ -377,7 +377,7 @@ export default function Home() {
           </button>
         </header>
 
-        {/* Tab Vendas */}
+        
         <div id="tab-vendas" style={{...styles.pageContent, display: activeTab === "tab-vendas" ? "flex" : "none"}}>
           <div style={styles.card}>
             <div style={styles.cardHeader}>
@@ -428,7 +428,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Tab Pedidos */}
+        
         <div id="tab-pedidos" style={{...styles.pageContent, display: activeTab === "tab-pedidos" ? "block" : "none"}}>
           <div style={styles.card}>
             <div style={styles.cardHeader}>
@@ -439,7 +439,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Tab Registrar Craft */}
+        
         <div id="tab-registrar" style={{...styles.pageContent, display: activeTab === "tab-registrar" ? "block" : "none"}}>
           <div style={{...styles.card, maxWidth: '800px'}}>
             <div style={styles.cardHeader}>
@@ -478,7 +478,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Tab Painel de Produção */}
+        
         <div id="tab-producao" style={{...styles.pageContent, display: activeTab === "tab-producao" ? "block" : "none"}}>
           <div style={styles.card}>
             <div style={styles.cardHeader}>
@@ -527,7 +527,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Tab Equipe */}
+        
         <div id="tab-equipe" style={{...styles.pageContent, display: activeTab === "tab-equipe" ? "block" : "none"}}>
           {hireRequests.length > 0 && (
             <div style={{...styles.card, border: '1px solid var(--cor-destaque-bg)'}}>
@@ -587,7 +587,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Tab Roles */}
+        
         <div id="tab-roles" style={{...styles.pageContent, display: activeTab === "tab-roles" ? "flex" : "none"}}>
           <div style={styles.grid2Cols}>
             <div style={styles.card}>
@@ -653,7 +653,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Tab Admin Master */}
+        
         {session?.user?.name === "admin" && (
           <div id="tab-master" style={{...styles.pageContent, display: activeTab === "tab-master" ? "block" : "none"}}>
             <div style={styles.card}>
@@ -702,7 +702,7 @@ export default function Home() {
         )}
       </main>
 
-      {/* Modal Settings */}
+      
       <div className="modal-overlay" id="modalSettings" style={{ display: 'none' }}>
         <div style={styles.modalBody}>
           <div style={styles.cardHeader}>
@@ -752,7 +752,7 @@ export default function Home() {
 }
 
 const styles = {
-  // CONFIGURAÇÃO BASE
+  
   layoutWrapper: {
     display: 'flex',
     height: '100vh',
@@ -782,7 +782,7 @@ const styles = {
     animation: 'spin 1s linear infinite'
   },
 
-  // SIDEBAR
+  
   sidebar: {
     display: 'flex',
     flexDirection: 'column',
@@ -862,7 +862,7 @@ const styles = {
     fontWeight: '600'
   },
 
-  // USER BAR
+  
   userInfoBar: {
     margin: '0 12px',
     padding: '16px',
@@ -898,7 +898,7 @@ const styles = {
     transition: '0.2s'
   },
 
-  // MAIN CONTENT
+  
   mainContent: {
     flex: 1,
     padding: '40px',
@@ -934,7 +934,7 @@ const styles = {
     transition: 'all 0.2s'
   },
 
-  // CARDS & COMPONENTS
+  
   pageContent: {
     flexDirection: 'column',
     gap: '24px'
@@ -1043,7 +1043,7 @@ const styles = {
     width: '100%'
   },
 
-  // ESPECIFICOS PRODUCAO
+  
   producaoGrid: {
     display: 'grid',
     gap: '12px'
@@ -1091,7 +1091,7 @@ const styles = {
     }
   },
 
-  // EQUIPE E CARGOS
+  
   teamList: { display: 'flex', flexDirection: 'column', gap: '12px' },
   teamItem: {
     background: '#161922',
@@ -1136,7 +1136,7 @@ const styles = {
     cursor: 'pointer'
   },
 
-  // ADMIN
+  
   keyCode: {
     fontFamily: 'monospace',
     color: '#f1c40f',
@@ -1154,7 +1154,7 @@ const styles = {
     borderBottom: '1px solid #1c1f26'
   },
 
-  // MODAL
+  
   modalBody: {
     background: '#0d0f14',
     width: '90%',

@@ -20,12 +20,12 @@
 }
 
 .page-content {
-  display: none; /* Esconde todas as abas */
+  display: none; 
   animation: fadeIn 0.3s ease;
 }
 
 .page-content.active {
-  display: block; /* Mostra apenas a ativa */
+  display: block; 
 }
 
 @keyframes fadeIn {
@@ -33,15 +33,15 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Largura da barra de rolagem */
+
 ::-webkit-scrollbar {
-  width: 8px;               /* Para scroll vertical */
-  height: 8px;              /* Para scroll horizontal */
+  width: 8px;               
+  height: 8px;              
 }
 
-/* Fundo da barra (Track) */
+
 ::-webkit-scrollbar-track {
-  background: #0a0b10;      /* Cor de fundo do layout wrapper */
+  background: #0a0b10;      
 }
 
 
@@ -50,19 +50,19 @@
 }
 
 .user-info-card:hover {
-  background-color: #1c202b !important; /* Cor de fundo ao passar o mouse */
-  border-color: var(--cor-primaria) !important; /* Opcional: brilha a borda */
-}
-/* A parte que desliza (Thumb) */
-::-webkit-scrollbar-thumb {
-  background: #1f2430;      /* Uma cor um pouco mais clara que o fundo */
-  border-radius: 10px;      /* Deixa arredondado */
-  border: 2px solid #0a0b10; /* Cria um efeito de margem ao redor do thumb */
+  background-color: #1c202b !important; 
+  border-color: var(--cor-primaria) !important; 
 }
 
-/* Quando você passa o mouse no scroll */
+::-webkit-scrollbar-thumb {
+  background: #1f2430;      
+  border-radius: 10px;      
+  border: 2px solid #0a0b10; 
+}
+
+
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--cor-primaria, #d4a91c); /* Muda para a cor da sua empresa */
+  background: var(--cor-primaria, #d4a91c); 
 }
 
 .m-input {
@@ -75,12 +75,12 @@
   border-radius: 6px;
 }
 
-/* Garante que o fundo ocupe tudo e não crie barras de rolagem estranhas */
+
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
   overflow-x: hidden;
-  background: #0a0a0f; /* Cor de fundo padrão para evitar o "branco" no carregamento */
+  background: #0a0a0f; 
 }

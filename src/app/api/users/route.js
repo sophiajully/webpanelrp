@@ -1,16 +1,22 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs"; 
-
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 export async function POST(request) {
   try {
     const body = await request.json();
     const { username, password, roleId, companyId } = body;
+const session = await getServerSession(authOptions);
 
-    // LOG DE DEPURAÇÃO: Se der erro, olhe o console do VSCode e veja o que aparece aqui
+  
+  if (!session || session.user.name !== "admin") {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+    
     console.log("DADOS RECEBIDOS NA API:", { username, password: !!password, roleId, companyId });
 
-    // Verificação de segurança: Se a senha não chegar, retorna erro antes de tentar o hash
+    
     if (!password || password === "") {
       return NextResponse.json({ error: "A senha não foi fornecida pelo sistema." }, { status: 400 });
     }
@@ -19,13 +25,13 @@ export async function POST(request) {
       return NextResponse.json({ error: "Username e CompanyId são obrigatórios." }, { status: 400 });
     }
 
-    // 1. Verifica se o usuário já existe
+    
     const userExists = await prisma.user.findUnique({ where: { username } });
     if (userExists) {
       return NextResponse.json({ error: "Este nome de usuário já existe." }, { status: 400 });
     }
 
-    // 2. Lógica para garantir que exista um Role (Cargo) válido
+    
     let finalRoleId = roleId;
     const roleCheck = finalRoleId ? await prisma.role.findUnique({ where: { id: finalRoleId } }) : null;
 
@@ -45,11 +51,11 @@ export async function POST(request) {
       }
     }
 
-    // 3. Hash da senha (Agora garantido que password existe)
+    
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // 4. Cria o usuário
+    
     const newUser = await prisma.user.create({
       data: {
         username,

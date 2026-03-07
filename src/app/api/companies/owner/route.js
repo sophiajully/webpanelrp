@@ -11,12 +11,12 @@ export async function GET() {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
-    // Busca empresas onde ele é dono OU onde ele é membro
+    
     const companies = await prisma.company.findMany({
       where: {
         OR: [
-          { ownerId: session.user.id }, // Onde ele é o dono
-          { users: { some: { id: session.user.id } } } // Onde ele está na lista de membros
+          { ownerId: session.user.id }, 
+          { users: { some: { id: session.user.id } } } 
         ]
       },
       select: {

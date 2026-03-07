@@ -32,11 +32,11 @@ export async function GET() {
             where: { 
                 companyId: session.user.companyId,
                 NOT: { 
-                    id: session.user.id // Não lista o próprio dono na lista de funcionários
+                    id: session.user.id 
                 } 
             },
             select: { 
-                // Selecionamos apenas o necessário, EXCLUINDO o campo password
+                
                 id: true,
                 username: true,
                 roleId: true,
@@ -52,14 +52,14 @@ export async function GET() {
             }
         });
 
-        // O SEGREDO ESTÁ AQUI:
-        // Não podemos achatar o objeto 'role' para uma string, 
-        // senão o m.role.name no React quebra.
+        
+        
+        
         const equipeProntaParaOFrontend = equipe.map(u => ({
             id: u.id,
-            username: u.username, // Mantemos como username
-            roleId: u.roleId,     // Enviamos o ID para o <select> funcionar
-            role: u.role          // Enviamos o OBJETO ROLE completo (id e name)
+            username: u.username, 
+            roleId: u.roleId,     
+            role: u.role          
         }));
 
         return NextResponse.json(equipeProntaParaOFrontend);
@@ -81,7 +81,7 @@ export async function DELETE(request) {
     if (!id) return NextResponse.json({ error: "ID ausente" }, { status: 400 });
 
     try {
-        // 1. Buscar dados do usuário e empresa antes de desvincular
+        
         const userToDisconnect = await prisma.user.findUnique({
             where: { id: id },
             include: { 
@@ -95,7 +95,7 @@ export async function DELETE(request) {
             return NextResponse.json({ error: "Membro não encontrado ou não pertence à sua empresa" }, { status: 404 });
         }
 
-        // 2. Executar o Desvínculo (Soft Delete)
+        
         await prisma.user.update({
             where: { id: id },
             data: { 
@@ -104,13 +104,13 @@ export async function DELETE(request) {
             }
         });
 
-        // 3. Enviar Webhook via Queue
+        
         if (userToDisconnect.company?.webhookLogs) {
             await Queue.add("ENVIAR_WEBHOOK_DISCORD", {
                 url: userToDisconnect.company.webhookLogs,
                 embed: {
                     title: "👢 Membro Desvinculado",
-                    color: 0xffa500, // Laranja para indicar uma remoção/saída
+                    color: 0xffa500, 
                     description: `O colaborador **${userToDisconnect.username}** foi removido da equipe.`,
                     fields: [
                         { name: "Empresa", value: userToDisconnect.company.name, inline: true },

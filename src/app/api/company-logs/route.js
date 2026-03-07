@@ -22,7 +22,7 @@ export async function GET(request) {
     const search = searchParams.get("search") || "";
     const skip = (page - 1) * limit;
 
-    // Filtro: busca por termo nos detalhes ou no nome da ação, filtrando pela empresa
+    
     const where = {
       companyId: companyId,
       OR: search ? [
@@ -42,7 +42,7 @@ export async function GET(request) {
             select: { username: true }
           }
         },
-        orderBy: { createdAt: 'desc' } // Logs mais recentes primeiro
+        orderBy: { createdAt: 'desc' } 
       }),
       prisma.companyLog.count({ where })
     ]);

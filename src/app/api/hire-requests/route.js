@@ -11,20 +11,20 @@ export async function POST(req) {
 
     const { companyId } = await req.json();
 
-    // 1. Verifica duplicidade
+    
     const existing = await prisma.hireRequest.findFirst({
       where: { userId: session.user.id, companyId, status: "pending" }
     });
 
     if (existing) return NextResponse.json({ error: "Você já tem uma solicitação pendente nesta empresa." }, { status: 400 });
 
-    // 2. Busca dados da empresa para o Webhook
+    
     const targetCompany = await prisma.company.findUnique({
       where: { id: companyId },
       select: { name: true, webhookLogs: true, colorPrimary: true }
     });
 
-    // 3. Cria a solicitação
+    
     const request = await prisma.hireRequest.create({
       data: {
         userId: session.user.id,
@@ -33,13 +33,13 @@ export async function POST(req) {
       }
     });
 
-    // 4. WEBHOOK: Alerta de Nova Solicitação
+    
     if (targetCompany?.webhookLogs) {
       await Queue.add("ENVIAR_WEBHOOK_DISCORD", {
         url: targetCompany.webhookLogs,
         embed: {
           title: "📩 Nova Solicitação de Entrada",
-          color: 0x3498db, // Azul
+          color: 0x3498db, 
           description: `O usuário **${session.user.name}** solicitou acesso à empresa.`,
           fields: [
             { name: "Usuário", value: session.user.name, inline: true },
@@ -109,20 +109,20 @@ export async function PATCH(req) {
     const isApproved = action === 'approve';
 
     if (isApproved) {
-      // 1. Vincula o usuário à empresa
-      // 2. Opcional: Atribuir um Role padrão de "Funcionário" aqui se desejar
+      
+      
       await prisma.user.update({
         where: { id: request.userId },
         data: { companyId: request.companyId }
       });
     }
 
-    // Deleta o pedido processado
+    
     await prisma.hireRequest.delete({ where: { id: requestId } });
 
-    // WEBHOOK: Resultado da análise
+    
     if (request.company.webhookLogs) {
-      const statusColor = isApproved ? 0x2ecc71 : 0xe74c3c; // Verde ou Vermelho
+      const statusColor = isApproved ? 0x2ecc71 : 0xe74c3c; 
       
       await Queue.add("ENVIAR_WEBHOOK_DISCORD", {
         url: request.company.webhookLogs,

@@ -3,14 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Image as ImageIcon } from "lucide-react";
+import { Annoyed, Image as ImageIcon } from "lucide-react";
 import { 
   ShoppingCart, 
   ClipboardList, 
   Hammer, 
   Beef, 
   Shield, 
-  Users, 
+  Users,
+  Bell,
+  Menu,
   Key, 
   User, 
   Medal, 
@@ -40,6 +42,9 @@ export default function Home() {
   const [craftList, setCraftList] = useState([]);
   const [teamList, setTeamList] = useState([]);
   const [roleList, setRoleList] = useState([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+
   const [showCompanySelector, setShowCompanySelector] = useState(false);
   const [keyList, setKeyList] = useState([]);
   const [showPerfilModal, setShowPerfilModal] = useState(false);
@@ -61,10 +66,51 @@ const [loadingPombo, setLoadingPombo] = useState(false);
     name: "", canVendas: true, canCraft: true, canLogs: false, canAdmin: false
   });
   const [minhasEmpresas, setMinhasEmpresas] = useState([]);
-// Adicione aos seus estados existentes
+
 const [showNovaEmpresaModal, setShowNovaEmpresaModal] = useState(false);
 const [novaEmpresaData, setNovaEmpresaData] = useState({ name: "", colorPrimary: "#8b0000" });
+const [isMobile, setIsMobile] = useState(false);
 
+useEffect(() => {
+  const handleResize = () => setIsMobile(window.innerWidth < 768);
+  handleResize(); // Executa ao carregar
+  window.addEventListener('resize', handleResize);
+  return () => window.removeEventListener('resize', handleResize);
+}, []);
+const [previewUrl, setPreviewUrl] = useState("");
+
+
+const getCartazParams = () => {
+  return new URLSearchParams({
+    titulo: cartazData.titulo || 'PROCURA-SE',
+    subtitulo: cartazData.subtitulo || 'NEGOCIOS & PROPRIEDADES',
+    fazenda: cartazData.fazenda || 'VALE DO SERENO',
+    dono: cartazData.dono || 'ARTHUR MORGAN',
+    pombo: cartazData.pombo || 'CORREIO CENTRAL',
+    servicos: cartazData.servicos || 'GADO • CAVALOS • COLHEITA',
+    rodape: cartazData.rodape || 'REGISTRADO NO DEPARTAMENTO DE AGRICULTURA',
+    selo: cartazData.selo || 'ORIGINAL',
+    data: cartazData.data || 'EST. 1899',
+  });
+};
+
+
+const baixarCartaz = async () => {
+  try {
+    const response = await fetch(`/api/cartaz?${getCartazParams().toString()}`);
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `safralog-${session?.user?.name || 'img'}-cartaz.png`; 
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    alert("Erro ao baixar o cartaz");
+  }
+};
 const criarNovaEmpresa = async () => {
   if (!novaEmpresaData.name) return alert("Dê um nome para sua nova fazenda!");
   
@@ -81,7 +127,7 @@ const criarNovaEmpresa = async () => {
       alert("✅ Empresa criada com sucesso!");
       setShowNovaEmpresaModal(false);
       
-      // Opcional: Já trocar para a empresa nova automaticamente
+      
       await trocarEmpresaAtiva(empresaCriada.id);
     }
   } catch (err) {
@@ -90,10 +136,10 @@ const criarNovaEmpresa = async () => {
     setLoadingAction(false);
   }
 };
-// Função para buscar todas as empresas onde o usuário é Owner
+const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 const carregarMinhasEmpresas = useCallback(async () => {
   try {
-    const res = await fetch('/api/companies/owner'); // Você precisará criar esta rota
+    const res = await fetch('/api/companies/owner'); 
     const data = await res.json();
     if (Array.isArray(data)) setMinhasEmpresas(data);
   } catch (err) {
@@ -107,7 +153,7 @@ const excluirEmpresa = async (id, nome) => {
     const res = await fetch(`/api/companies/delete?id=${id}`, { method: 'DELETE' });
     if (res.ok) {
       alert("Empresa removida.");
-      carregarMinhasEmpresas(); // Atualiza a lista da sidebar
+      carregarMinhasEmpresas(); 
     } else {
       const err = await res.json();
       alert(err.error);
@@ -116,7 +162,7 @@ const excluirEmpresa = async (id, nome) => {
     alert("Erro ao excluir.");
   }
 };
-// Função para trocar a empresa ativa
+
 const trocarEmpresaAtiva = async (novoCompanyId) => {
   setLoadingAction(true);
   try {
@@ -127,8 +173,8 @@ const trocarEmpresaAtiva = async (novoCompanyId) => {
     });
 
     if (res.ok) {
-      // 1. Atualiza a sessão local. 
-      // O NextAuth chamará o callback 'jwt' e 'session' no seu backend.
+      
+      
       await update({
         ...session,
         user: {
@@ -137,8 +183,8 @@ const trocarEmpresaAtiva = async (novoCompanyId) => {
         }
       });
 
-      // 2. Opcional: Recarregar para garantir que todos os useEffects 
-      // que dependem da session.user.companyId sejam disparados com dados limpos.
+      
+      
       window.location.reload();
     } else {
       const erro = await res.json();
@@ -152,7 +198,7 @@ const trocarEmpresaAtiva = async (novoCompanyId) => {
   }
 };
 
-// Disparar a busca quando for Owner
+
 useEffect(() => {
   if (session?.user?.isOwner) {
     carregarMinhasEmpresas();
@@ -200,7 +246,7 @@ const carregarPombo = useCallback(async () => {
     }
 }, []);
 
-// Monitora a abertura do modal para carregar os dados
+
 useEffect(() => {
     if (showPerfilModal) carregarPombo();
 }, [showPerfilModal, carregarPombo]);
@@ -219,7 +265,7 @@ const salvarConfigPombo = async () => {
             alert("❌ " + data.error);
         } else {
             alert("✅ Pombo configurado com sucesso!");
-            if (update) update(); // Atualiza a sessão do NextAuth
+            if (update) update(); 
         }
     } catch (err) {
         alert("Erro ao conectar com o servidor.");
@@ -321,7 +367,7 @@ const salvarConfigPombo = async () => {
   }, [session, carregarKeys, carregarEquipe, carregarRoles, carregarCrafts]);
 useEffect(() => {
   if (status === "authenticated" && session?.user?.companyId) {
-    refreshData(); // Esta função deve buscar os dados da empresa atual
+    refreshData(); 
   }
 }, [status, session?.user?.companyId, refreshData]);
   useEffect(() => {
@@ -438,7 +484,7 @@ useEffect(() => {
  if (status === "loading") {
   return (
     <div style={styles.loadingScreen}>
-      {/* Injeção de CSS para a animação */}
+      
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
@@ -453,7 +499,7 @@ useEffect(() => {
         border: '3px solid rgba(212, 169, 28, 0.1)',
         borderTop: '3px solid var(--cor-primaria, #d4a91c)',
         borderRadius: '50%',
-        animation: 'spin 1s linear infinite', // Aqui a mágica acontece
+        animation: 'spin 1s linear infinite', 
         marginBottom: '15px'
       }}></div>
       <span style={{ color: '#9ca3af', fontSize: '0.9rem', fontWeight: '500' }}>
@@ -463,7 +509,7 @@ useEffect(() => {
   );
 }
 
-// No seu page.js, logo após o loading spinner...
+
 
 if (status === "authenticated" && !session?.user?.companyId) {
   return (
@@ -493,14 +539,66 @@ if (status === "authenticated" && !session?.user?.companyId) {
 
   return (
     <div style={styles.layoutWrapper}>
-      <nav style={styles.sidebar}>
-  <div style={styles.sidebarTopSection}>
-    
-    {/* SELETOR DE EMPRESA (Aparece se tiver mais de uma) */}
-   {/* SELETOR DE EMPRESA */}
-{/* SELETOR DE EMPRESA */}
-{/* SELETOR DE EMPRESA */}
-{/* SELETOR DE EMPRESA COMPACTO */}
+      
+
+
+
+
+
+{isMobile && ( // Mudado de ?? para &&
+  <button 
+    onClick={toggleSidebar}
+    style={{
+      position: 'fixed',
+      top: '15px',
+      // Se a sidebar estiver aberta, o botão "foge" 230px para a direita para não ficar em cima do menu
+      left: isSidebarOpen ? '230px' : '15px', 
+      zIndex: 200, 
+      display: 'flex', 
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'var(--cor-primaria)',
+      color: '#000',
+      border: 'none',
+      borderRadius: '8px',
+      padding: '8px',
+      cursor: 'pointer',
+      transition: 'all 0.3s ease',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
+    }}
+  >
+    {isSidebarOpen ? <XCircle size={24} /> : <Menu size={24} />}
+  </button>
+)}
+
+{/* 2. SIDEBAR CORRIGIDA */}
+<nav style={{
+  ...styles.sidebar,
+  position: isMobile ? 'fixed' : 'relative',
+  top: 0,
+  left: 0,
+  height: '100vh',
+  width: '280px',
+  zIndex: 150,
+  transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+  transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  display: 'flex',
+  flexDirection: 'column', // ESSENCIAL: Organiza em coluna
+  overflow: 'hidden',      // A NAV em si não scrolla mais
+  backgroundColor: '#0d0f14',
+  borderRight: '1px solid #1c1f26',
+  paddingTop: '10px',
+  paddingBottom: '10px'
+}}>
+
+  {/* PARTE SUPERIOR: MENU COM SCROLL */}
+  <div style={{ 
+    flex: 1,               
+    overflowY: 'auto',     // SÓ O MENU TEM SCROLL AGORA
+    paddingTop: isMobile ?  '60px' : '',
+    paddingBottom: isMobile ? '20px' : ''
+  }}>
+    {/* SEÇÃO DE EMPRESA */}
 {session?.user?.isOwner && (
   <div style={{ padding: '0 24px 20px', position: 'relative' }}>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -515,7 +613,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
       </button>
     </div>
 
-    {/* BOTÃO DO SELETOR (O que aparece parado) */}
+    {/* Dropdown Principal */}
     <div 
       onClick={() => setShowCompanySelector(!showCompanySelector)}
       style={{
@@ -540,43 +638,45 @@ if (status === "authenticated" && !session?.user?.companyId) {
       }} />
     </div>
 
-    {/* LISTA FLUTUANTE (Aparece ao clicar) */}
+    {/* Lista de Empresas (Dropdown Aberto) */}
     {showCompanySelector && (
       <div style={{
         position: 'absolute',
-        top: '100%',
-        left: '24px',
+        top: '100%', 
+        left: '24px', 
         right: '24px',
         background: '#1c1f26',
         border: '1px solid #2d2d3d',
         borderRadius: '8px',
         marginTop: '5px',
         zIndex: 100,
-        boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-        overflow: 'hidden'
+        maxHeight: '200px',
+        overflowY: 'auto',
+        boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
       }}>
         {Array.isArray(minhasEmpresas) && minhasEmpresas.map((empresa) => (
           <div 
-            key={empresa.id}
+            key={empresa.id} 
             style={{ 
               display: 'flex', 
-              alignItems: 'center',
+              alignItems: 'center', 
               borderBottom: '1px solid #2d2d3d',
               background: session?.user?.companyId === empresa.id ? 'rgba(212, 169, 28, 0.05)' : 'transparent'
             }}
           >
+            {/* Botão de Selecionar Empresa */}
             <button
-              onClick={() => {
-                trocarEmpresaAtiva(empresa.id);
-                setShowCompanySelector(false);
+              onClick={() => { 
+                trocarEmpresaAtiva(empresa.id); 
+                setShowCompanySelector(false); 
               }}
-              style={{
-                flex: 1,
-                padding: '12px',
-                background: 'none',
-                border: 'none',
-                color: session?.user?.companyId === empresa.id ? 'var(--cor-primaria)' : '#9ca3af',
-                textAlign: 'left',
+              style={{ 
+                flex: 1, 
+                padding: '12px', 
+                background: 'none', 
+                border: 'none', 
+                color: session?.user?.companyId === empresa.id ? 'var(--cor-primaria)' : '#9ca3af', 
+                textAlign: 'left', 
                 fontSize: '0.8rem',
                 cursor: 'pointer',
                 fontWeight: session?.user?.companyId === empresa.id ? 'bold' : 'normal'
@@ -585,20 +685,25 @@ if (status === "authenticated" && !session?.user?.companyId) {
               {empresa.name}
             </button>
 
-            {/* Lixeira discreta na direita */}
+            {/* BOTÃO DE DELETAR (Apenas se não for a empresa ativa) */}
             {session?.user?.companyId !== empresa.id && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  excluirEmpresa(empresa.id, empresa.name);
+                  if (confirm(`Tem certeza que deseja excluir a empresa "${empresa.name}"?`)) {
+                    excluirEmpresa(empresa.id, empresa.name);
+                  }
                 }}
                 style={{
-                  padding: '12px',
+                  padding: '0 12px',
                   background: 'none',
                   border: 'none',
                   color: '#4b2a2a',
                   cursor: 'pointer',
-                  transition: '0.2s'
+                  transition: '0.2s',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center'
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
                 onMouseLeave={(e) => e.currentTarget.style.color = '#4b2a2a'}
@@ -613,136 +718,113 @@ if (status === "authenticated" && !session?.user?.companyId) {
   </div>
 )}
 
-    <div style={styles.sidebarHeader} id="nomeEmpresaDisplay">
-      <div style={styles.companyLogo}>
-        {(session?.user?.companyName || "SafraLog").charAt(0).toUpperCase()}
-      </div>
-      {session?.user?.companyName || "SafraLog"}
-    </div>
-          <div style={styles.navLabel}>PRINCIPAL</div>
-          <div style={styles.navMenu}>
-            {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
-             <div 
-              style={{...styles.navItem, ...(activeTab === "tab-vendas" ? styles.navItemActive : {})}} 
-              onClick={() => showTab("tab-vendas", "Nova Encomenda")}
-            >
-              <ShoppingCart size={18} /> Nova Encomenda
-            </div>
-            )}
-            
-            <div 
-              style={{...styles.navItem, ...(activeTab === "tab-cartaz" ? styles.navItemActive : {})}} 
-              onClick={() => showTab("tab-cartaz", "CARTAZ")}
-            >
-              <ImageIcon size={18} /> Cartaz
-            </div>
-            
-            {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
-              <div 
-              style={{...styles.navItem, ...(activeTab === "tab-pedidos" ? styles.navItemActive : {})}} 
-              onClick={() => showTab("tab-pedidos", "Pedidos")}
-            >
-              <ClipboardList size={18} /> Histórico de Pedidos
-            </div>
-            )}
-
-            {(session?.user?.isOwner || session?.user?.role?.canCraft) && (
-              <>
-                <div 
-                  style={{...styles.navItem, ...(activeTab === "tab-registrar" ? styles.navItemActive : {})}} 
-                  onClick={() => showTab("tab-registrar", "Registrar Craft")}
-                >
-                  <Hammer size={18} /> Registrar Craft
-                </div>
-                <div 
-                  style={{...styles.navItem, ...(activeTab === "tab-producao" ? styles.navItemActive : {})}} 
-                  onClick={() => showTab("tab-producao", "Painel de Produção")}
-                >
-                  <Beef size={18} /> Painel de Produção
-                </div>
-                
-              </>
-            )}
-
-            
-
-
-              <>
-                <div style={styles.navLabel}>GESTAO</div>
-               <div 
-  style={styles.navItem} 
-  onClick={() => router.push('/mercadao')}
->
-  <Store size={18} /> Mercadão
-</div>
-                
-                {(session?.user?.isOwner || session?.user?.role?.canAdmin) && (
-              <div 
-                  style={{...styles.navItem, ...(activeTab === "tab-roles" ? styles.navItemActive : {})}} 
-                  onClick={() => showTab("tab-roles", "Gerenciar Cargos")}
-                >
-                  <Shield size={18} /> Gerenciar Cargos
-                </div>
-            )}
-            {(session?.user?.isOwner || session?.user?.role?.canAdmin) && (
-              <div 
-                  style={{...styles.navItem, ...(activeTab === "tab-equipe" ? styles.navItemActive : {})}} 
-                  onClick={() => showTab("tab-equipe", "Gerenciar Equipe")}
-                >
-                  <Users size={18} /> Gerenciar Equipe
-                </div>
-            )}
-                
-              </>
-              
-            {(session?.user?.isOwner || session?.user?.role?.canLogs) && (
-              <div 
-              style={{...styles.navItem, ...(activeTab === "tab-logs" ? styles.navItemActive : {})}} 
-              onClick={() => showTab("tab-logs", "Logs")}
-            >
-              <Scroll  size={18} /> Logs
-            </div>
-            )}
-            
-
-            {session?.user?.name === "admin" && (
-              <>
-                <div style={styles.navLabel}>ADMINISTRAÇÃO</div>
-                <div 
-                  style={{...styles.navItemMaster, ...(activeTab === "tab-master" ? styles.navItemMasterActive : {})}} 
-                  onClick={() => showTab("tab-master", "Master Keys")}
-                >
-                  <Key size={18} /> Master Keys
-                </div>
-              </>
-            )}
-          </div>
+    <div style={styles.navLabel}>PRINCIPAL</div>
+    <div style={styles.navMenu}>
+      <div style={{...styles.navItem, ...(activeTab === "tab-anuncios" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-vendas", "Nova Encomenda"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
+          <Bell size={18} /> Anúncios
         </div>
+      {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
+        <div style={{...styles.navItem, ...(activeTab === "tab-vendas" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-vendas", "Nova Encomenda"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
+          <ShoppingCart size={18} /> Nova Encomenda
+        </div>
+      )}
+      
+      <div style={{...styles.navItem, ...(activeTab === "tab-cartaz" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-cartaz", "CARTAZ"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
+        <ImageIcon size={18} /> Cartaz
+      </div>
+      
+      {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
+        <div style={{...styles.navItem, ...(activeTab === "tab-pedidos" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-pedidos", "Pedidos"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
+          <ClipboardList size={18} /> Histórico de Pedidos
+        </div>
+      )}
 
-        <div 
-  style={{ ...styles.userInfoBar, cursor: 'pointer' }} // Adicionamos o cursor pointer aqui
-  onClick={() => setShowPerfilModal(true)}            // Abre o modal ao clicar
->
-  <div style={styles.userDetails}>
-    <span style={styles.userName}>{session?.user?.name}</span>
-    <span style={styles.userRole}>
-      {session?.user?.role?.name || (session?.user?.isOwner ? "Dono" : "Funcionário")}
-    </span>
+      {(session?.user?.isOwner || session?.user?.role?.canCraft) && (
+        <>
+          <div style={{...styles.navItem, ...(activeTab === "tab-registrar" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-registrar", "Registrar Craft"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
+            <Hammer size={18} /> Registrar Craft
+          </div>
+          <div style={{...styles.navItem, ...(activeTab === "tab-producao" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-producao", "Painel de Produção"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
+            <Beef size={18} /> Painel de Produção
+          </div>
+        </>
+      )}
+
+      <div style={styles.navLabel}>GESTAO</div>
+      <div style={styles.navItem} onClick={() => router.push('/mercadao')}>
+        <Store size={18} /> Mercadão
+      </div>
+      
+      {(session?.user?.isOwner || session?.user?.role?.canAdmin) && (
+        <div style={{...styles.navItem, ...(activeTab === "tab-roles" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-roles", "Gerenciar Cargos"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
+          <Shield size={18} /> Gerenciar Cargos
+        </div>
+      )}
+      
+      {(session?.user?.isOwner || session?.user?.role?.canAdmin) && (
+        <div style={{...styles.navItem, ...(activeTab === "tab-equipe" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-equipe", "Gerenciar Equipe"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
+          <Users size={18} /> Gerenciar Equipe
+        </div>
+      )}
+      
+      {(session?.user?.isOwner || session?.user?.role?.canLogs) && (
+        <div style={{...styles.navItem, ...(activeTab === "tab-logs" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-logs", "Logs"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
+          <Scroll size={18} /> Logs
+        </div>
+      )}
+
+      {session?.user?.name === "admin" && (
+        <>
+          <div style={styles.navLabel}>ADMINISTRAÇÃO</div>
+          <div style={{...styles.navItemMaster, ...(activeTab === "tab-master" ? styles.navItemMasterActive : {})}} onClick={() => { showTab("tab-master", "Master Keys"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
+            <Key size={18} /> Master Keys
+          </div>
+        </>
+      )}
+    </div>
   </div>
-  
-  <button 
-    style={styles.btnLogoutIcon} 
-    onClick={(e) => {
-      e.stopPropagation(); // IMPORTANTE: Impede que o clique no botão de sair também abra o modal
-      signOut();
-    }}
-  >
-    <LogOut size={16} />
-  </button>
-</div>
-      </nav>
 
-      <main style={styles.mainContent}>
+  <div 
+    style={{ 
+      ...styles.userInfoBar, 
+      cursor: 'pointer',
+      borderTop: '1px solid #1c1f26',
+      padding: '15px 24px',
+      backgroundColor: '#0d0f14', // Garante que o fundo não seja transparente
+      flexShrink: 0,
+      marginBottom: '20px'
+    }} 
+    onClick={() => setShowPerfilModal(true)}            
+  >
+    <div style={styles.userDetails}>
+      <span style={styles.userName}>{session?.user?.name}</span>
+      <span style={styles.userRole}>
+        {session?.user?.role?.name || (session?.user?.isOwner ? "Dono" : "Funcionário")}
+      </span>
+    </div>
+    
+    <button style={styles.btnLogoutIcon} onClick={(e) => { e.stopPropagation(); signOut(); }}>
+      <LogOut size={16} />
+    </button>
+  </div>
+</nav>
+
+{/* 3. OVERLAY (CLICAR FORA FECHA O MENU NO MOBILE) */}
+{isSidebarOpen && (
+  <div 
+    onClick={toggleSidebar}
+    style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.6)',
+      backdropFilter: 'blur(2px)',
+      zIndex: 140,
+      display: window.innerWidth < 768 ? 'block' : 'none'
+    }}
+  />
+)}
+
+      <main style={{...styles.mainContent}}>
         <header style={styles.mainHeader}>
           <div>
             <span style={styles.breadcrumb}>Dashboard / {activeTab.replace("tab-", "")}</span>
@@ -755,11 +837,16 @@ if (status === "authenticated" && !session?.user?.companyId) {
 
 
 
-{/* TAB CARTAZ CUSTOM - LIVE PREVIEW REAL */}
 <div id="tab-cartaz" style={{...styles.pageContent, display: activeTab === "tab-cartaz" ? "block" : "none"}}>
-  <div style={{...styles.grid2Cols, gap: '24px', alignItems: 'flex-start'}}>
-    
-    {/* Formulário de Configuração */}
+<div style={!isMobile ? { 
+    ...styles.grid2Cols, 
+    gap: '24px', 
+    alignItems: 'flex-start' 
+  } : { 
+    display: 'flex', 
+    flexDirection: 'column', 
+    gap: '20px' 
+  }}>
     <div style={{...styles.card, margin: 0}}>
       <div style={styles.cardHeader}>
         <div style={styles.headerIcon}><ImageIcon size={18} /></div>
@@ -767,7 +854,6 @@ if (status === "authenticated" && !session?.user?.companyId) {
       </div>
       
       <div style={{display: 'flex', flexDirection: 'column', gap: '15px', padding: '10px 0'}}>
-        {/* INPUTS IGUAIS AOS ANTERIORES */}
         <div style={styles.inputWrapper}>
           <label style={styles.labelInput}>Título Principal</label>
           <input type="text" style={styles.baseInput} value={cartazData.titulo || ''}
@@ -799,89 +885,71 @@ if (status === "authenticated" && !session?.user?.companyId) {
             onChange={(e) => setCartazData({...cartazData, servicos: e.target.value})} />
         </div>
 
-        {/* ... (Outros inputs: contato, data, selo, rodape permanecem os mesmos) ... */}
+        <div style={{display: 'flex', gap: '10px'}}>
+           {!isMobile && (
+            <button 
+            style={{...styles.baseButton, background: '#444', color: '#fff', flex: 1, height: '45px'}}
+            onClick={() => setPreviewUrl(`/api/cartaz?${getCartazParams().toString()}&v=${Date.now()}`)}
+          >
+            VER PRÉVIA
+          </button>
+           )}
 
-        <button 
-          style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '10px', height: '45px', fontWeight: 'bold'}}
-          onClick={() => {
-            const params = new URLSearchParams({
-              titulo: cartazData.titulo || 'PROCURA-SE',
-              subtitulo: cartazData.subtitulo || 'NEGOCIOS & PROPRIEDADES',
-              fazenda: cartazData.fazenda || 'VALE DO SERENO',
-              dono: cartazData.dono || 'ARTHUR MORGAN',
-              pombo: cartazData.pombo || 'CORREIO CENTRAL',
-              servicos: cartazData.servicos || 'GADO • CAVALOS • COLHEITA',
-              rodape: cartazData.rodape || 'REGISTRADO NO DEPARTAMENTO DE AGRICULTURA',
-              selo: cartazData.selo || 'ORIGINAL',
-              data: cartazData.data || 'EST. 1899'
-            });
-            window.open(`/api/cartaz?${params.toString()}`, '_blank');
-          }}
-        >
-          BAIXAR EM ALTA RESOLUÇÃO
-        </button>
+          <button 
+            style={{...styles.baseButton, ...styles.buttonPrimary, flex: 2, height: '45px', fontWeight: 'bold'}}
+            onClick={baixarCartaz}
+          >
+            BAIXAR AGORA
+          </button>
+        </div>
       </div>
     </div>
 
-    {/* Live Preview REAL (Puxando da API) */}
-    <div style={{
+    
+    {!isMobile && (
+      <div style={{
       ...styles.card, 
       margin: 0, 
-      background: '#222', 
+      background: '#1a1a1a', 
       padding: '20px',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: '750px',
+      minHeight: '600px',
     }}>
-      <p style={{color: '#fff', fontSize: '0.8rem', marginBottom: '15px', opacity: 0.6}}>PRÉVIA EM TEMPO REAL</p>
+      <p style={{color: '#fff', fontSize: '0.8rem', marginBottom: '15px', opacity: 0.6}}>PRÉVIA DO CARTAZ</p>
       
       <div style={{
         width: '100%',
-        maxWidth: '400px',
-        boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
-        border: '1px solid #444',
-        position: 'relative',
-        backgroundColor: '#e6d5b8',
+        maxWidth: '350px',
+        boxShadow: '0 20px 50px rgba(0,0,0,0.8)',
+        border: '1px solid #333',
+        backgroundColor: '#111',
+        minHeight: '450px',
         display: 'flex',
-        justifyContent: 'center',
-        overflow: 'hidden'
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
-        <img 
-          src={`/api/cartaz?${new URLSearchParams({
-            titulo: cartazData.titulo || 'PROCURA-SE',
-            subtitulo: cartazData.subtitulo || 'NEGOCIOS & PROPRIEDADES',
-            fazenda: cartazData.fazenda || 'VALE DO SERENO',
-            dono: cartazData.dono || 'ARTHUR MORGAN',
-            pombo: cartazData.pombo || 'CORREIO CENTRAL',
-            servicos: cartazData.servicos || 'GADO • CAVALOS • COLHEITA',
-            rodape: cartazData.rodape || 'REGISTRADO NO DEPARTAMENTO DE AGRICULTURA',
-            selo: cartazData.selo || 'ORIGINAL',
-            data: cartazData.data || 'EST. 1899',
-            v: Date.now() // Força o navegador a atualizar a imagem sem cache
-          }).toString()}`}
-          alt="Preview do Cartaz"
-          style={{
-            width: '100%',
-            height: 'auto',
-            display: 'block'
-          }}
-          // Opcional: Adicionar um loader enquanto a imagem carrega
-          onLoad={(e) => e.target.style.opacity = 1}
-          onError={(e) => { e.target.src = "https://via.placeholder.com/600x900?text=Erro+ao+Gerar+Preview"; }}
-        />
+        {previewUrl ? (
+          <img 
+            src={previewUrl}
+            alt="Preview"
+            style={{ width: '100%', height: 'auto', display: 'block' }}
+          />
+        ) : (
+          <div style={{color: '#555', textAlign: 'center', padding: '20px'}}>
+            <ImageIcon size={48} style={{opacity: 0.2, marginBottom: '10px'}} />
+            <p>Clique em "VER PRÉVIA"<br/>para gerar a imagem</p>
+          </div>
+        )}
       </div>
-      
-      <p style={{color: '#aaa', fontSize: '0.7rem', marginTop: '15px', textAlign: 'center'}}>
-        A imagem acima é gerada dinamicamente pela sua API.<br/>
-        Toda alteração nos campos atualizará a prévia automaticamente.
-      </p>
     </div>
+    )}
 
   </div>
 </div>
-{/* MODAL DE PERFIL / POMBO */}
+
 {showPerfilModal && (
   <div style={{
     position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
@@ -893,7 +961,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
       borderRadius: '16px', border: '1px solid #2d2d3d', overflow: 'hidden',
       boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
     }}>
-      {/* Header do Modal */}
+      
       <div style={{ padding: '20px', background: '#1e1e2f', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2d2d3d' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <User size={20} color="var(--cor-primaria)" />
@@ -904,7 +972,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
         </button>
       </div>
 
-      {/* Conteúdo */}
+      
       <div style={{ padding: '25px' }}>
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <div style={{ width: '60px', height: '60px', background: 'var(--cor-primaria-bg)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px auto', color: 'var(--cor-primaria)', fontSize: '1.5rem', fontWeight: 'bold' }}>
@@ -935,7 +1003,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
     </div>
   </div>
 )}
-        {/* Tab Vendas */}
+        
         <div id="tab-vendas" style={{...styles.pageContent, display: activeTab === "tab-vendas" ? "flex" : "none"}}>
           <div style={styles.card}>
             <div style={styles.cardHeader}>
@@ -987,7 +1055,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
         </div>
 <div id="tab-logs" style={{...styles.pageContent, display: activeTab === "tab-logs" ? "flex" : "none", flexDirection: 'column', gap: '24px'}}>
   
-  {/* CARD DE FILTROS E PESQUISA */}
+  
   <div style={styles.card}>
     <div style={styles.cardHeader}>
       <div style={styles.headerIcon}><Search size={18} /></div>
@@ -1021,7 +1089,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
     </div>
   </div>
 
-  {/* CARD DA TABELA DE LOGS */}
+  
   <div style={{...styles.card, flex: 1, minHeight: '400px'}}>
     <div style={styles.cardHeader}>
       <div style={styles.headerIcon}><History size={18} /></div>
@@ -1039,12 +1107,12 @@ if (status === "authenticated" && !session?.user?.companyId) {
           </tr>
         </thead>
         <tbody id="tabelaLogsCorpo">
-          {/* Preenchido dinamicamente via JS */}
+          
         </tbody>
       </table>
     </div>
 
-    {/* PAGINAÇÃO ESTILIZADA */}
+    
     <div style={{
       display: 'flex', 
       justifyContent: 'space-between', 
@@ -1076,7 +1144,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
     </div>
   </div>
 </div>
-        {/* Tab Pedidos */}
+        
         <div id="tab-pedidos" style={{...styles.pageContent, display: activeTab === "tab-pedidos" ? "block" : "none"}}>
           <div style={styles.card}>
             <div style={styles.cardHeader}>
@@ -1087,7 +1155,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
           </div>
         </div>
 
-        {/* Tab Registrar Craft */}
+        
         <div id="tab-registrar" style={{...styles.pageContent, display: activeTab === "tab-registrar" ? "block" : "none"}}>
           <div style={{...styles.card, maxWidth: '800px'}}>
             <div style={styles.cardHeader}>
@@ -1126,7 +1194,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
           </div>
         </div>
 
-        {/* Tab Painel de Produção */}
+        
         <div id="tab-producao" style={{...styles.pageContent, display: activeTab === "tab-producao" ? "block" : "none"}}>
           <div style={styles.card}>
             <div style={styles.cardHeader}>
@@ -1177,7 +1245,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
 
 <div id="tab-equipe" style={{...styles.pageContent, display: activeTab === "tab-equipe" ? "block" : "none"}}>
   
-  {/* HEADER DA TAB COM BOTÃO DE ADICIONAR */}
+  
   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
     <div>
       <h2 style={{ color: '#fff', margin: 0, fontSize: '1.5rem' }}>Gerenciamento de Equipe</h2>
@@ -1203,7 +1271,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
     </button>
   </div>
 
-  {/* SEÇÃO DE SOLICITAÇÕES PENDENTES (Apenas se houver) */}
+  
   {hireRequests.length > 0 && (
     <div style={{...styles.card, borderLeft: '4px solid var(--cor-destaque)', marginBottom: '30px', background: 'rgba(212,169,28,0.03)'}}>
       <div style={styles.cardHeader}>
@@ -1227,7 +1295,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
     </div>
   )}
 
-  {/* TABELA DE COLABORADORES ATIVOS */}
+  
   <div style={styles.card}>
     <div style={styles.cardHeader}>
       <div style={styles.headerIcon}><Users size={18} /></div>
@@ -1282,7 +1350,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
               </td>
               <td style={{ padding: '15px', textAlign: 'right' }}>
   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-    {/* BOTÃO DE RESETAR SENHA */}
+    
     <button 
       style={{ background: 'none', border: 'none', color: '#f1c40f', cursor: 'pointer', padding: '8px', borderRadius: '6px' }} 
       onClick={() => window.app.resetarSenhaFuncionario(m.id, m.username)}
@@ -1291,7 +1359,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
       <Key size={20} />
     </button>
 
-    {/* BOTÃO DE DELETAR */}
+    
     <button 
       style={{ background: 'none', border: 'none', color: '#ff4c4c', cursor: 'pointer', padding: '8px', borderRadius: '6px' }} 
       onClick={() => removerMembro(m.id)}
@@ -1309,7 +1377,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
     </div>
   </div>
 
-  {/* MODAL DE CONTRATAÇÃO (Adicione isto ao final do return principal do page.js) */}
+  
   <div id="modalContratacao" style={{ 
     display: 'none', 
     position: 'fixed', 
@@ -1365,7 +1433,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
   </div>
 </div>
 
-        {/* Tab Roles */}
+        
         <div id="tab-roles" style={{...styles.pageContent, display: activeTab === "tab-roles" ? "flex" : "none"}}>
           <div style={styles.grid2Cols}>
             <div style={styles.card}>
@@ -1431,7 +1499,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
           </div>
         </div>
 
-        {/* Tab Admin Master */}
+        
         {session?.user?.name === "admin" && (
           <div id="tab-master" style={{...styles.pageContent, display: activeTab === "tab-master" ? "block" : "none"}}>
             <div style={styles.card}>
@@ -1480,7 +1548,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
         )}
       </main>
 
-      {/* Modal Settings */}
+      
       <div className="modal-overlay" id="modalSettings" style={{ display: 'none' }}>
         <div style={styles.modalBody}>
           <div style={styles.cardHeader}>
@@ -1578,7 +1646,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
 }
 
 const styles = {
-  // CONFIGURAÇÃO BASE
+  
   layoutWrapper: {
     display: 'flex',
     height: '100vh',
@@ -1608,7 +1676,7 @@ const styles = {
     animation: 'spin 1s linear infinite'
   },
 
-  // SIDEBAR
+  
   sidebar: {
     display: 'flex',
     flexDirection: 'column',
@@ -1688,7 +1756,7 @@ const styles = {
     fontWeight: '600'
   },
 
-  // USER BAR
+  
   userInfoBar: {
     margin: '0 12px',
     padding: '16px',
@@ -1724,14 +1792,17 @@ const styles = {
     transition: '0.2s'
   },
 
-  // MAIN CONTENT
+  
   mainContent: {
     flex: 1,
     padding: '40px',
     overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
-    gap: '32px'
+    gap: '32px',
+  transition: 'margin-left 0.3s ease',
+  width: '100%',
+  padding: '20px'
   },
   mainHeader: {
     display: 'flex',
@@ -1760,7 +1831,7 @@ const styles = {
     transition: 'all 0.2s'
   },
 
-  // CARDS & COMPONENTS
+  
   pageContent: {
     display: 'flex',
     flexDirection: 'column',
@@ -1862,7 +1933,7 @@ const styles = {
     width: '100%'
   },
 
-  // ESPECIFICOS PRODUCAO
+  
   producaoGrid: {
     display: 'grid',
     gap: '12px'
@@ -1906,7 +1977,7 @@ const styles = {
     transition: '0.2s',
   },
 
-  // EQUIPE E CARGOS
+  
   teamList: { display: 'flex', flexDirection: 'column', gap: '12px' },
   teamItem: {
     background: '#161922',
@@ -1951,7 +2022,7 @@ const styles = {
     cursor: 'pointer'
   },
   
-  // ADMIN
+  
   keyCode: {
     fontFamily: 'monospace',
     color: 'var(--cor-primaria, #d4a91c)',
@@ -1969,7 +2040,7 @@ const styles = {
     borderBottom: '1px solid #1c1f26'
   },
 
-  // MODAL
+  
   modalBody: {
     background: '#0d0f14',
     width: '90%',

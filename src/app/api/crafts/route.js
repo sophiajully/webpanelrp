@@ -12,7 +12,7 @@ export async function DELETE(req) {
   }
 
   try {
-    // Pegamos o ID da URL (ex: /api/crafts?id=123)
+    
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
@@ -20,7 +20,7 @@ export async function DELETE(req) {
       return NextResponse.json({ error: "ID não fornecido" }, { status: 400 });
     }
 
-    // 1. Primeiro, buscamos o craft para conferir a propriedade
+    
     const craft = await prisma.craft.findUnique({
       where: { id: id }
     });
@@ -29,12 +29,12 @@ export async function DELETE(req) {
       return NextResponse.json({ error: "Receita não encontrada" }, { status: 404 });
     }
 
-    // 2. SEGURANÇA: Verifica se o craft pertence à empresa do usuário
+    
     if (craft.companyId !== session.user.companyId) {
       return NextResponse.json({ error: "Você não tem permissão para excluir esta receita" }, { status: 403 });
     }
 
-    // 3. Deleta após passar na verificação
+    
     await prisma.craft.delete({
       where: { id: id }
     });
@@ -59,7 +59,7 @@ export async function POST(req) {
         unit: String(unit),
         insumos: JSON.stringify(insumos),
         price,
-        companyId: session.user.companyId // Vincula automaticamente à empresa do usuário
+        companyId: session.user.companyId 
       }
     });
 
@@ -73,7 +73,7 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  // FILTRO CRUCIAL: Só traz os crafts da empresa do usuário logado
+  
   const crafts = await prisma.craft.findMany({
     where: { companyId: session.user.companyId }
   });

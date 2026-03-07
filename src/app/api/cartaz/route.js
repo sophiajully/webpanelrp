@@ -1,8 +1,14 @@
 import { ImageResponse } from 'next/og';
 import fs from 'fs';
 import path from 'path';
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export async function GET(request) {
+  const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
   const { searchParams } = new URL(request.url);
   
   const limparTexto = (txt) => {
@@ -32,13 +38,13 @@ export async function GET(request) {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          backgroundColor: '#e6d5b8', // Cor de papel envelhecido sólido e seguro
+          backgroundColor: '#e6d5b8', 
           padding: '25px',
           color: '#2a1a10',
           fontFamily: 'Playfair',
         }}>
           
-          {/* MOLDURA EXTERNA */}
+          
           <div style={{
             display: 'flex',
             flexDirection: 'column',
@@ -50,7 +56,7 @@ export async function GET(request) {
             position: 'relative'
           }}>
             
-            {/* MOLDURA INTERNA */}
+            
             <div style={{
               display: 'flex',
               flexDirection: 'column',
@@ -62,13 +68,13 @@ export async function GET(request) {
               position: 'relative'
             }}>
 
-              {/* CANTONEIRAS GEOMÉTRICAS (Não bugam como emojis) */}
+              
               <div style={{ position: 'absolute', top: 10, left: 10, width: 20, height: 20, border: '2px solid #2a1a10', transform: 'rotate(45deg)', display: 'flex' }} />
               <div style={{ position: 'absolute', top: 10, right: 10, width: 20, height: 20, border: '2px solid #2a1a10', transform: 'rotate(45deg)', display: 'flex' }} />
               <div style={{ position: 'absolute', bottom: 10, left: 10, width: 20, height: 20, border: '2px solid #2a1a10', transform: 'rotate(45deg)', display: 'flex' }} />
               <div style={{ position: 'absolute', bottom: 10, right: 10, width: 20, height: 20, border: '2px solid #2a1a10', transform: 'rotate(45deg)', display: 'flex' }} />
 
-              {/* CABEÇALHO */}
+              
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
                 <div style={{ width: '40px', height: '2px', backgroundColor: '#2a1a10', display: 'flex' }} />
                 <span style={{ fontSize: '18px', letterSpacing: '4px', fontWeight: 'bold' }}>{dataEst}</span>
@@ -87,7 +93,7 @@ export async function GET(request) {
                 {fazenda}
               </h1>
 
-              {/* FAIXA DE SUBTÍTULO (Display Flex adicionado para corrigir o erro) */}
+              
               <div style={{
                 display: 'flex',
                 backgroundColor: '#2a1a10',
@@ -97,14 +103,14 @@ export async function GET(request) {
                 <span style={{ fontSize: '20px', color: '#e6d5b8', letterSpacing: '5px' }}>{subtitulo}</span>
               </div>
 
-              {/* SEPARADOR COM DIAMANTE */}
+              
               <div style={{ display: 'flex', alignItems: 'center', width: '100%', margin: '45px 0' }}>
                 <div style={{ flex: 1, height: '2px', backgroundColor: '#2a1a10', display: 'flex' }} />
                 <div style={{ width: '12px', height: '12px', backgroundColor: '#2a1a10', transform: 'rotate(45deg)', margin: '0 15px', display: 'flex' }} />
                 <div style={{ flex: 1, height: '2px', backgroundColor: '#2a1a10', display: 'flex' }} />
               </div>
 
-              {/* CONTEÚDO */}
+              
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '35px', width: '100%' }}>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -122,7 +128,7 @@ export async function GET(request) {
                 </div>
               </div>
 
-              {/* CAIXA DE CONTATO */}
+              
               <div style={{ 
                 display: 'flex', 
                 flexDirection: 'column', 
@@ -135,14 +141,14 @@ export async function GET(request) {
                  <span style={{ fontSize: '34px', fontWeight: 'bold' }}># {contato}</span>
               </div>
 
-              {/* RODAPÉ */}
+              
               <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <span style={{ fontSize: '10px', textAlign: 'center', opacity: 0.7, maxWidth: '70%', letterSpacing: '1px' }}>
                   {rodape}
                 </span>
               </div>
 
-              {/* CARIMBO (Display Flex garantido) */}
+              
               <div style={{
                 position: 'absolute',
                 bottom: '30px',

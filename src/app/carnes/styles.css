@@ -22,36 +22,36 @@ body {
     height: 100vh;
     overflow: hidden;
 }
-/* Largura da barra de rolagem */
+
 ::-webkit-scrollbar {
-  width: 8px;               /* Para scroll vertical */
-  height: 8px;              /* Para scroll horizontal */
+  width: 8px;               
+  height: 8px;              
 }
 
-/* Fundo da barra (Track) */
+
 ::-webkit-scrollbar-track {
-  background: #0a0b10;      /* Cor de fundo do layout wrapper */
+  background: #0a0b10;      
 }
 .user-info-card {
   transition: all 0.2s ease !important;
 }
 
 .user-info-card:hover {
-  background-color: #1c202b !important; /* Cor de fundo ao passar o mouse */
-  border-color: var(--cor-primaria) !important; /* Opcional: brilha a borda */
-}
-/* A parte que desliza (Thumb) */
-::-webkit-scrollbar-thumb {
-  background: #1f2430;      /* Uma cor um pouco mais clara que o fundo */
-  border-radius: 10px;      /* Deixa arredondado */
-  border: 2px solid #0a0b10; /* Cria um efeito de margem ao redor do thumb */
+  background-color: #1c202b !important; 
+  border-color: var(--cor-primaria) !important; 
 }
 
-/* Quando você passa o mouse no scroll */
-::-webkit-scrollbar-thumb:hover {
-  background: var(--cor-primaria, #d4a91c); /* Muda para a cor da sua empresa */
+::-webkit-scrollbar-thumb {
+  background: #1f2430;      
+  border-radius: 10px;      
+  border: 2px solid #0a0b10; 
 }
-/* Estilização para os inputs de cor parecerem botões */
+
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cor-primaria, #d4a91c); 
+}
+
 input[type="color"] {
     -webkit-appearance: none;
     border: 2px solid #3d3d5c;
@@ -69,7 +69,7 @@ input[type="color"]::-webkit-color-swatch-wrapper {
 input[type="color"]::-webkit-color-swatch {
     border: none;
 }
-/* --- SIDEBAR --- */
+
 .sidebar {
     width: var(--sidebar-width);
     background: var(--sidebar-bg);
@@ -119,7 +119,7 @@ input[type="color"]::-webkit-color-swatch {
     margin-right: 12px;
 }
 
-/* --- CONTEÚDO PRINCIPAL --- */
+
 .main-content {
     flex: 1;
     display: flex;
@@ -183,7 +183,7 @@ header {
     border-top: 5px solid var(--accent-red);
 }
 
-/* --- COMPONENTES REUTILIZÁVEIS --- */
+
 .card {
     background: var(--card-bg);
     padding: 25px;

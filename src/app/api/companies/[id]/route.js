@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export async function GET(request, { params }) {
-  // Em Next.js 15, params é uma Promise
+  
   const { id } = await params;
 
   try {
@@ -10,7 +12,7 @@ export async function GET(request, { params }) {
       where: { id: id },
       include: {
         crafts: true,
-        owner: true // Aqui garantimos que os produtos venham junto
+        owner: true 
       }
     });
 

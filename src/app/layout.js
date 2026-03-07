@@ -1,6 +1,6 @@
 import "./carnes/styles.css";
 import AuthProvider from "./components/AuthProvider";
-import ConsoleWarning from "./components/ConsoleWarning"; // Importe o novo componente
+import ConsoleWarning from "./components/ConsoleWarning"; 
 
 export const metadata = {
   title: "SafraLog",
@@ -21,7 +21,7 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR">
       <body>
         <AuthProvider>
-          {/* <ConsoleWarning /> O aviso rodará apenas no cliente aqui */}
+          
           {children}
         </AuthProvider>
       </body>

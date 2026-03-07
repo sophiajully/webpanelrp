@@ -17,14 +17,14 @@ export const authOptions = {
 
         const user = await prisma.user.findUnique({
           where: { username: credentials.username },
-          include: { role: true, company: true } // Você já busca a empresa aqui!
+          include: { role: true, company: true } 
         });
 
         if (!user || !(await bcrypt.compare(credentials.password, user.password))) {
           throw new Error("Usuário ou senha incorretos.");
         }
 
-        // Retornamos os dados da EMPRESA para o Token
+        
         return {
           id: user.id,
           name: user.username,
@@ -41,7 +41,7 @@ export const authOptions = {
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      // Login inicial
+      
       if (user) {
         token.id = user.id;
         token.isOwner = user.isOwner;
@@ -53,19 +53,19 @@ export const authOptions = {
         token.pombo = user.pombo
       }
 
-      // IMPORTANTE: Escuta o comando update() do front-end
+      
       if (trigger === "update") {
-        // Buscamos os dados atualizados do usuário e da empresa no banco
+        
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id },
           include: { 
-            company: true, // Buscamos a nova empresa vinculada
+            company: true, 
             role: true 
           }
         });
 
         if (dbUser) {
-          // Atualizamos o token com as informações REAIS do banco de dados
+          
           token.companyId = dbUser.companyId;
           token.role = dbUser.role;
           token.pombo = dbUser.pombo;
@@ -84,7 +84,7 @@ export const authOptions = {
         session.user.isOwner = token.isOwner;
         session.user.companyId = token.companyId;
         session.user.role = token.role;
-        // PASSA PARA A SESSÃO:
+        
         session.user.companyName = token.companyName;
         session.user.colorPrimary = token.colorPrimary;
         session.user.colorAccent = token.colorAccent;
@@ -96,10 +96,10 @@ export const authOptions = {
   pages: {
     signIn: '/login',
   },
-  secret: process.env.NEXTAUTH_SECRET, // CERTIFIQUE-SE QUE ISSO ESTÁ NO SEU .ENV
+  secret: process.env.NEXTAUTH_SECRET, 
 };
 
 const handler = NextAuth(authOptions);
 
-// NO APP ROUTER PRECISAMOS DISSO:
+
 export { handler as GET, handler as POST };

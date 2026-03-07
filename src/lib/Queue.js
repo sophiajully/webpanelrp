@@ -2,7 +2,7 @@ import { prisma } from "./prisma";
 
 class QueueManager {
     constructor() {
-        // Agora controlamos o processamento por URL de Webhook específica
+        
         this.activeWebhooks = new Set(); 
         this.handlers = new Map();
         this.DEFAULT_DELAY = 1000;
@@ -19,7 +19,7 @@ class QueueManager {
                 where: { status: "processing" },
                 data: { status: "pending" }
             });
-            // Tenta processar o que estiver pendente no início
+            
             this.processAll();
         } catch (err) {
             console.error("[Queue] Erro na inicialização:", err);
@@ -45,7 +45,7 @@ class QueueManager {
             });
 
             console.log(`[Queue] Job ${job.id} adicionado.`);
-            // Ao adicionar, tentamos processar apenas para o webhook deste payload
+            
             this.processNext(payload.url); 
             return job;
         } catch (err) {
@@ -54,7 +54,7 @@ class QueueManager {
         }
     }
 
-    // Tenta rodar filas de todos os webhooks pendentes
+    
     async processAll() {
         const pendingJobs = await prisma.queue.findMany({
             where: { status: "pending" },
@@ -66,15 +66,15 @@ class QueueManager {
     }
 
     async processNext(webhookUrl) {
-        // Se já existe um processo rodando para ESTE webhook, ignora
+        
         if (!webhookUrl || this.activeWebhooks.has(webhookUrl)) return;
 
         this.activeWebhooks.add(webhookUrl);
 
         try {
-            // Busca o próximo job pendente especificamente para esta URL
-            // O Prisma 5+ suporta busca dentro de JSON se configurado, 
-            // mas aqui usaremos uma busca segura via contains no payload.
+            
+            
+            
             const job = await prisma.queue.findFirst({
                 where: { 
                     status: "pending",
@@ -130,9 +130,9 @@ class QueueManager {
         } catch (err) {
             console.error(`[Queue] Erro crítico na fila ${webhookUrl}:`, err);
         } finally {
-            // Libera este webhook para o próximo job
+            
             this.activeWebhooks.delete(webhookUrl);
-            // Verifica se tem mais coisa para este mesmo webhook
+            
             this.processNext(webhookUrl);
         }
     }
@@ -140,7 +140,7 @@ class QueueManager {
 
 export const Queue = new QueueManager();
 
-// --- HANDLER (Igual ao anterior, mas com log melhor) ---
+
 Queue.define("ENVIAR_WEBHOOK_DISCORD", async (data) => {
     const { url, embed } = data;
 

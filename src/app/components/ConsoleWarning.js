@@ -1,4 +1,4 @@
-"use client"; // Este arquivo será um Client Component
+"use client"; 
 
 import { useEffect } from "react";
 

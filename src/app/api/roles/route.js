@@ -10,7 +10,7 @@ export async function GET() {
     try {
         const roles = await prisma.role.findMany({
             where: { companyId: session.user.companyId },
-            include: { _count: { select: { users: true } } } // Mostra quantos usuários têm esse cargo
+            include: { _count: { select: { users: true } } } 
         });
         return NextResponse.json(roles);
     } catch (error) {
@@ -43,13 +43,13 @@ export async function POST(request) {
 export async function DELETE(request) {
     const session = await getServerSession(authOptions);
     
-    // 1. Verificação de Segurança (Apenas Donos)
+    
     if (!session || !session.user.isOwner) {
         return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
     try {
-        // 2. Captura o ID da URL (?id=...)
+        
         const { searchParams } = new URL(request.url);
         const id = searchParams.get("id");
 
@@ -57,7 +57,7 @@ export async function DELETE(request) {
             return NextResponse.json({ error: "ID do cargo não fornecido" }, { status: 400 });
         }
 
-        // 3. Verifica se existem usuários usando este cargo
+        
         const roleWithUsers = await prisma.role.findUnique({
             where: { id },
             include: { _count: { select: { users: true } } }
@@ -73,11 +73,11 @@ export async function DELETE(request) {
             }, { status: 400 });
         }
 
-        // 4. Executa a exclusão (garantindo que pertence à empresa do dono)
+        
         await prisma.role.delete({
             where: { 
                 id: id,
-                companyId: session.user.companyId // Segurança extra: só deleta se for da mesma empresa
+                companyId: session.user.companyId 
             }
         });
 

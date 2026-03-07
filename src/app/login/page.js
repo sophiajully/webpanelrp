@@ -1,161 +1,262 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react"; // Importação essencial
+import { signIn } from "next-auth/react"; 
 import Image from "next/image";
+import { Lock, User, ShieldCheck } from "lucide-react";
 
 export default function Login() {
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(""); // Para exibir mensagens de erro na tela
+  const [error, setError] = useState(""); 
+  const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 480);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    // O NextAuth gerencia o POST para /api/auth/callback/credentials automaticamente
     const result = await signIn("credentials", {
       username: formData.username,
       password: formData.password,
-      redirect: false, // Evita o refresh da página para podermos tratar o erro
+      redirect: false, 
     });
 
     if (result?.error) {
       setError(result.error);
       setLoading(false);
     } else {
-      // Login bem-sucedido, NextAuth já salvou o cookie
       router.push("/"); 
-      router.refresh(); // Garante que o layout pegue a nova sessão
+      router.refresh(); 
     }
   };
 
   return (
-    <div className="auth-container" style={styles.container}>
-      <form className="auth-card" style={styles.card} onSubmit={handleLogin}>
+    <div style={styles.container}>
+      {/* Background Decorativo Estilo Velho Oeste */}
+      <div style={styles.bgOverlay} />
+      
+      <form 
+        style={{
+          ...styles.card,
+          width: isMobile ? '92%' : '420px',
+          padding: isMobile ? '30px 20px' : '50px 40px',
+        }} 
+        onSubmit={handleLogin}
+      >
         <div style={styles.header}>
-          <div style={styles.header}>
-    {/* Substituído o emoji pela imagem do public */}
-    <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'center' }}>
-        <Image 
-            src="/isotipo.png" 
-            alt="SafraLog Logo" 
-            width={60} 
-            height={60} 
-            priority
-        />
-    </div>
-    <h2 style={styles.title}>Safra Log</h2>
-    <p style={styles.subtitle}>Painel de Gestão</p>
-</div>
+          <div style={styles.logoWrapper}>
+            <Image 
+              src="/isotipo.png" 
+              alt="SafraLog Logo" 
+              width={isMobile ? 70 : 85} 
+              height={isMobile ? 70 : 85} 
+              style={styles.logo}
+              priority
+            />
+          </div>
+          <h2 style={styles.title}>SAFRA<span style={{color: '#d4a91c'}}>LOG</span></h2>
+          <div style={styles.divider}>
+            <div style={styles.line} />
+            <ShieldCheck size={14} color="#d4a91c" />
+            <div style={styles.line} />
+          </div>
+          <p style={styles.subtitle}>SISTEMA DE GESTÃO DE FRONTEIRA</p>
         </div>
 
         {error && (
-            <div style={styles.errorBadge}>
-                ⚠️ {error}
-            </div>
+          <div style={styles.errorBadge}>
+            {error}
+          </div>
         )}
 
         <div style={styles.inputGroup}>
-            <label style={styles.label}>Usuário</label>
-            <input 
-              type="text" 
-              placeholder="Digite seu usuário" 
-              required 
-              style={styles.input}
-              onChange={e => setFormData({...formData, username: e.target.value})}
-            />
+          <label style={styles.label}><User size={12} /> USUÁRIO</label>
+          <input 
+            type="text" 
+            placeholder="Seu nome" 
+            required 
+            style={styles.input}
+            onChange={e => setFormData({...formData, username: e.target.value})}
+          />
         </div>
 
         <div style={styles.inputGroup}>
-            <label style={styles.label}>Senha</label>
-            <input 
-              type="password" 
-              placeholder="••••••••" 
-              required 
-              style={styles.input}
-              onChange={e => setFormData({...formData, password: e.target.value})}
-            />
+          <label style={styles.label}><Lock size={12} /> SENHA</label>
+          <input 
+            type="password" 
+            placeholder="••••••••" 
+            required 
+            style={styles.input}
+            onChange={e => setFormData({...formData, password: e.target.value})}
+          />
         </div>
 
-        <button type="submit" disabled={loading} style={styles.btnPrimary}>
-          {loading ? "Autenticando..." : "Entrar no Sistema"}
+        <button 
+          type="submit" 
+          disabled={loading} 
+          style={{
+            ...styles.btnPrimary,
+            opacity: loading ? 0.7 : 1,
+            transform: loading ? 'scale(0.98)' : 'scale(1)'
+          }}
+        >
+          {loading ? "AUTENTICANDO..." : "ACESSAR PAINEL"}
         </button>
 
-        <p style={styles.footerText}>
-          Ainda não é parceiro? <br/>
-          <span onClick={() => router.push('/signup')} style={styles.link}>Criar conta ou solicitar acesso</span>
-        </p>
+        <div style={styles.footer}>
+          <p style={styles.footerText}>Precisa de uma licença comercial?</p>
+          <span onClick={() => router.push('/signup')} style={styles.link}>
+            SOLICITAR ACESSO À SAFRALOG
+          </span>
+        </div>
       </form>
+
+      <div style={styles.versionTag}>V. 2.4.0 - FRONTIER EDITION</div>
     </div>
   );
 }
 
 const styles = {
-container: { 
-    height: '100vh', 
-    width: '100vw', 
+  container: { 
+    minHeight: '100dvh',
+    width: '100%', 
     display: 'flex', 
-    flexDirection: 'column', 
     alignItems: 'center', 
     justifyContent: 'center', 
-    background: '#0a0a0f', 
-    backgroundImage: 'radial-gradient(circle at center, #1a1a2e 0%, #0a0a0f 100%)',
+    backgroundColor: '#050507',
+    // Gradiente que simula uma vinheta de filme antigo
+    backgroundImage: 'radial-gradient(circle, rgba(26,20,12,0.4) 0%, rgba(5,5,7,1) 80%)',
     position: 'fixed', 
     top: 0,
-    left: 0
+    left: 0,
+    overflowY: 'auto',
+    fontFamily: '"Cinzel", serif', // Sugiro importar essa fonte ou similar no seu projeto
+  },
+  bgOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundImage: 'url("https://www.transparenttextures.com/patterns/black-paper.png")', // Textura de papel/couro
+    opacity: 0.3,
+    pointerEvents: 'none'
   },
   card: { 
-    background: '#161625', 
-    padding: '40px', 
-    borderRadius: '16px', 
-    width: '100%',
-    maxWidth: '400px',
+    background: 'rgba(22, 22, 37, 0.8)', 
+    backdropFilter: 'blur(12px)', // Efeito de vidro
+    borderRadius: '4px', // RDR2 usa formas mais retas e clássicas
     textAlign: 'center', 
-    boxShadow: '0 20px 50px rgba(0,0,0,0.7)', 
-    border: '1px solid #2a2a3a',
-    margin: 'auto' 
+    boxShadow: '0 30px 60px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(212, 169, 28, 0.15)', 
+    border: '1px solid #1c1c28',
+    margin: 'auto',
+    boxSizing: 'border-box',
+    position: 'relative',
+    zIndex: 1,
   },
-  header: { marginBottom: '30px' },
-  title: { color: '#fff', margin: '10px 0 5px 0', fontSize: '1.5rem', letterSpacing: '1px' },
-  subtitle: { color: '#666', fontSize: '0.9rem', marginBottom: '20px' },
-  inputGroup: { textAlign: 'left', marginBottom: '15px' },
-  label: { color: '#aaa', fontSize: '0.8rem', marginLeft: '5px', marginBottom: '5px', display: 'block' },
+  logoWrapper: {
+    marginBottom: '20px',
+    display: 'flex',
+    justifyContent: 'center',
+    filter: 'drop-shadow(0 0 15px rgba(212, 169, 28, 0.4))'
+  },
+  logo: { borderRadius: '50%' },
+  title: { 
+    color: '#fff', 
+    margin: '0', 
+    letterSpacing: '4px', 
+    fontWeight: '900', 
+    fontSize: '2rem',
+    textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
+  },
+  divider: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '15px',
+    margin: '10px 0'
+  },
+  line: { height: '1px', background: 'linear-gradient(to right, transparent, #d4a91c, transparent)', width: '60px' },
+  subtitle: { 
+    color: '#9ca3af', 
+    fontSize: '0.7rem', 
+    letterSpacing: '3px', 
+    marginBottom: '30px',
+    fontWeight: '500'
+  },
+  inputGroup: { textAlign: 'left', marginBottom: '20px', width: '100%' },
+  label: { 
+    color: '#d4a91c', 
+    fontSize: '0.65rem', 
+    letterSpacing: '1px', 
+    marginBottom: '8px', 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: '6px',
+    fontWeight: '700'
+  },
   input: { 
     width: '100%', 
-    padding: '14px', 
-    background: '#0f0f1a', 
+    padding: '16px', 
+    background: 'rgba(0,0,0,0.4)', 
     border: '1px solid #2d2d44', 
     color: 'white', 
-    borderRadius: '10px',
+    borderRadius: '4px',
     outline: 'none',
-    transition: 'border 0.3s'
+    fontSize: '1rem', 
+    boxSizing: 'border-box',
+    transition: 'all 0.3s ease',
+    borderLeft: '3px solid #d4a91c' // Detalhe lateral premium
   },
   btnPrimary: { 
     width: '100%', 
-    padding: '14px', 
-    background: '#ff4c4c', 
+    padding: '18px',
+    background: 'linear-gradient(135deg, #d4a91c 0%, #a67c00 100%)', 
     border: 'none', 
-    color: 'white', 
-    borderRadius: '10px', 
+    color: '#000', 
+    borderRadius: '4px', 
     cursor: 'pointer', 
-    fontWeight: 'bold',
-    fontSize: '1rem',
-    marginTop: '10px',
-    boxShadow: '0 4px 15px rgba(255, 76, 76, 0.3)',
-    transition: 'transform 0.2s'
+    fontWeight: '900',
+    fontSize: '0.9rem',
+    letterSpacing: '2px',
+    marginTop: '15px',
+    boxShadow: '0 10px 20px rgba(0,0,0,0.4)',
+    transition: 'all 0.3s'
   },
   errorBadge: {
-    background: '#ff4c4c22',
+    background: 'rgba(255, 76, 76, 0.1)',
     color: '#ff4c4c',
-    padding: '10px',
-    borderRadius: '8px',
-    fontSize: '0.85rem',
+    padding: '12px',
+    borderRadius: '4px',
+    fontSize: '0.75rem',
     marginBottom: '20px',
-    border: '1px solid #ff4c4c44'
+    border: '1px solid rgba(255, 76, 76, 0.3)',
+    fontWeight: 'bold'
   },
-  footerText: { marginTop: '25px', fontSize: '0.85rem', color: '#888', lineHeight: '1.5' },
-  link: { color: '#ff4c4c', cursor: 'pointer', fontWeight: '600', textDecoration: 'underline' }
+  footer: { marginTop: '35px' },
+  footerText: { fontSize: '0.75rem', color: '#666', marginBottom: '8px' },
+  link: { 
+    color: '#fff', 
+    cursor: 'pointer', 
+    fontWeight: '700', 
+    fontSize: '0.7rem', 
+    letterSpacing: '1px',
+    textDecoration: 'none',
+    borderBottom: '1px solid #d4a91c',
+    paddingBottom: '2px'
+  },
+  versionTag: {
+    position: 'fixed',
+    bottom: '20px',
+    right: '20px',
+    fontSize: '0.6rem',
+    color: '#444',
+    letterSpacing: '2px'
+  }
 };

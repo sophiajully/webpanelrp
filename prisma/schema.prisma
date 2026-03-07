@@ -10,34 +10,32 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  username     String    @unique
-  password     String
-  pombo        String?   @unique
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  pombo     String?  @unique
 
-  // Controle de Key
-  accessKey    String?
-  expiresAt    DateTime?
+  accessKey String?
+  expiresAt DateTime?
 
-  // Relação 1: Empresa onde o usuário TRABALHA atualmente (sua empresa "ativa")
-  companyId    String?
-  company      Company?  @relation("CompanyMembers", fields: [companyId], references: [id])
+  // Relação de Membro (Funcionário)
+  companyId String?
+  company   Company? @relation("CompanyMembers", fields: [companyId], references: [id])
   
-  roleId       String?
-  role         Role?     @relation(fields: [roleId], references: [id])
+  roleId    String?
+  role      Role?    @relation(fields: [roleId], references: [id])
 
-  // AJUSTE: Agora é uma lista [], pois ele pode ser dono de várias
+  // Relação de Dono (Empresas que este usuário criou)
   ownedCompanies Company[] @relation("CompanyOwner")
 
-  requests     HireRequest[]
-  logs           CompanyLog[]
+  requests  HireRequest[]
+  logs      CompanyLog[]
 }
 
 model Company {
   id            String   @id @default(uuid())
   name          String
   
-  // AJUSTE: Removemos o @unique aqui para permitir que o mesmo ownerId se repita em várias empresas
   ownerId       String   
   owner         User     @relation("CompanyOwner", fields: [ownerId], references: [id])
 
@@ -47,13 +45,13 @@ model Company {
   colorPrimary  String   @default("#8b0000")
   colorAccent   String   @default("#ff4c4c")
 
-  // Listas
+  // Relacionamentos com Cascade
   users         User[]        @relation("CompanyMembers")
   roles         Role[]
   hireRequests  HireRequest[]
   crafts        Craft[]
   pedidos       Pedido[]
-  logs           CompanyLog[]
+  logs          CompanyLog[]
 }
 
 model CompanyLog {
@@ -61,13 +59,12 @@ model CompanyLog {
   companyId String
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
-  // Opcional: Usuário que realizou a ação (nulo se for ação do sistema)
   userId    String?
   user      User?    @relation(fields: [userId], references: [id])
 
-  action    String   // Ex: "MEMBRO_APROVADO", "VENDA_REALIZADA", "CARGO_ALTERADO"
-  details   String   // Texto descritivo: "O usuário X aprovou a entrada de Y"
-  category  String   @default("GERAL") // FINANCEIRO, RH, SISTEMA
+  action    String   
+  details   String   
+  category  String   @default("GERAL") 
   
   createdAt DateTime @default(now())
 
@@ -78,23 +75,23 @@ model Role {
   id        String   @id @default(uuid())
   name      String
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
-  isOwner    Boolean @default(false)
-  canVendas  Boolean @default(true)
-  canCraft   Boolean @default(true)
-  canLogs    Boolean @default(false)
-  canAdmin   Boolean @default(false)
+  isOwner   Boolean @default(false)
+  canVendas Boolean @default(true)
+  canCraft  Boolean @default(true)
+  canLogs   Boolean @default(false)
+  canAdmin  Boolean @default(false)
 
-  users      User[]
+  users     User[]
 }
 
 model HireRequest {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   status    String   @default("pending")
 }
 
@@ -113,16 +110,16 @@ model Craft {
   unit      String
   price     Decimal  @default(0.0)
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   insumos   String   @default("[]")
 }
 
 model Pedido {
   id        String   @id @default(uuid())
   name      String
-  pombo     String   // Aqui você salvará o rádio do dono no momento do pedido
+  pombo     String   
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   produtos  String   @default("[]")
   status    String   @default("pendente")
 }

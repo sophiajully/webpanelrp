@@ -1,9 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-// ROTA PARA SALVAR (PATCH)
 export async function PATCH(req) {
+   const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
   try {
     const token = await getToken({ req });
 
@@ -32,10 +38,15 @@ export async function PATCH(req) {
   }
 }
 
-// ROTA PARA CARREGAR (GET)
+
 export async function GET(req) {
+   const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
   try {
-    // Usando getToken para consistência e performance
+    
     const token = await getToken({ req });
 
     if (!token || !token.companyId) {

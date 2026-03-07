@@ -8,12 +8,14 @@ import { prisma } from "@/lib/prisma";
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
+    if (!session?.user) return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+
     if (!session?.user?.isOwner) return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
 
     const { name, colorPrimary } = await req.json();
-    const MAX_COMPANIES = 5; // <--- DEFINE O LIMITE AQUI
+    const MAX_COMPANIES = 5; 
 
-    // Contagem de empresas atuais
+    
     const count = await prisma.company.count({
       where: { ownerId: session.user.id }
     });

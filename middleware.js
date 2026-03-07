@@ -3,46 +3,29 @@ import { getToken } from 'next-auth/jwt';
 import { LRUCache } from 'lru-cache';
 
 
+
+
 const cache = new LRUCache({
   max: 10000,
   ttl: 60 * 1000, 
 });
 
 export async function middleware(req) {
-  const { pathname } = req.nextUrl;
-
   
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-
-  let identifier;
-  let limit;
-
-  if (token?.sub) {
-    
-    identifier = `user:${token.sub}`;
-    limit = 60; 
-  } else {
-    
-    const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || '127.0.0.1';
-    identifier = `ip:${ip}`;
-    
-    
-    if (pathname.includes('/api/auth/signup') || pathname.includes('/api/auth/callback')) {
-      limit = 5; 
-    } else {
-      limit = 20; 
-    }
-  }
-
   
-  const currentUsage = cache.get(identifier) || 0;
+  
+  const id = token?.sub || req.ip || req.headers.get('x-forwarded-for') || 'anonymous';
+  
+  
+  const limit = 60; 
+  const currentUsage = cache.get(id) || 0;
 
   if (currentUsage >= limit) {
     return new NextResponse(
       JSON.stringify({ 
         error: "Muitas requisições", 
-        message: "Limite excedido. Tente novamente em 1 minuto.",
-        type: token ? "USER_LIMIT" : "IP_LIMIT"
+        message: "Você atingiu o limite global de segurança. Tente novamente em 1 minuto." 
       }),
       { 
         status: 429, 
@@ -52,7 +35,7 @@ export async function middleware(req) {
   }
 
   
-  cache.set(identifier, currentUsage + 1);
+  cache.set(id, currentUsage + 1);
 
   
   const response = NextResponse.next();
@@ -60,16 +43,21 @@ export async function middleware(req) {
   
   response.headers.set('X-RateLimit-Limit', limit.toString());
   response.headers.set('X-RateLimit-Remaining', (limit - currentUsage - 1).toString());
-
+  
   return response;
 }
+
 
 export const config = {
   runtime: 'nodejs', 
   matcher: [
     /*
-     * Aplica em todas as rotas de API e páginas, removendo arquivos estáticos
+     * Aplica em todas as rotas de API e páginas, exceto:
+     * - _next/static (arquivos estáticos)
+     * - _next/image (otimização de imagens)
+     * - favicon.ico (ícone)
+     * - public (arquivos públicos como imagens/logos)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|api/auth).*)',
   ],
 };

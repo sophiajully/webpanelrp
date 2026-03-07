@@ -8,18 +8,18 @@ export default function SelecaoEmpresas() {
   const { data: session } = useSession();
   const router = useRouter();
 
-  // Estados
+  
   const [empresas, setEmpresas] = useState([]);
   const [meta, setMeta] = useState({ page: 1, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   
-  // Estados de Verificação
-  const [pedidosEnviados, setPedidosEnviados] = useState([]); // IDs de empresas com solicitação pendente
-  const [minhasEmpresas, setMinhasEmpresas] = useState([]);   // IDs de empresas onde o usuário é dono
+  
+  const [pedidosEnviados, setPedidosEnviados] = useState([]); 
+  const [minhasEmpresas, setMinhasEmpresas] = useState([]);   
 
-  // 1. Carrega todas as empresas do mercado (com paginação)
+  
   const carregarEmpresas = useCallback(async (page = 1, search = "") => {
     setLoading(true);
     try {
@@ -34,7 +34,7 @@ export default function SelecaoEmpresas() {
     }
   }, []);
 
-  // 2. Carrega solicitações pendentes do usuário
+  
   const carregarMeusPedidos = useCallback(async () => {
     try {
       const res = await fetch('/api/hire-requests/me'); 
@@ -47,7 +47,7 @@ export default function SelecaoEmpresas() {
     }
   }, []);
 
-  // 3. Carrega empresas que o usuário já é dono
+  
   const carregarMinhasEmpresas = useCallback(async () => {
     try {
       const res = await fetch('/api/companies/owner');
@@ -60,14 +60,14 @@ export default function SelecaoEmpresas() {
     }
   }, []);
 
-  // Efeito Inicial
+  
   useEffect(() => {
     carregarMeusPedidos();
     carregarMinhasEmpresas();
     carregarEmpresas(1, searchTerm);
   }, [carregarMeusPedidos, carregarMinhasEmpresas, carregarEmpresas]);
 
-  // Debounce para busca
+  
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       carregarEmpresas(1, searchTerm);
@@ -75,7 +75,7 @@ export default function SelecaoEmpresas() {
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm, carregarEmpresas]);
 
-  // Função de Contraste de Cor
+  
   const getContrastingColor = (hexcolor) => {
     if (!hexcolor) return "#000000";
     const hex = hexcolor.replace("#", "");
@@ -86,7 +86,7 @@ export default function SelecaoEmpresas() {
     return yiq >= 128 ? "#000000" : "#ffffff";
   };
 
-  // Solicitar Entrada
+  
   const solicitarEntrada = async (companyId) => {
     if (pedidosEnviados.includes(companyId) || minhasEmpresas.includes(companyId)) return;
 

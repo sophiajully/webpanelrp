@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 export async function PATCH(request) {
   const session = await getServerSession(authOptions);
   
-  // Apenas o dono pode resetar senhas
+  
   if (!session || !session.user.isOwner) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 403 });
   }
@@ -19,7 +19,7 @@ export async function PATCH(request) {
       return NextResponse.json({ error: "Dados ausentes" }, { status: 400 });
     }
 
-    // Gerar novo Hash
+    
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     await prisma.user.update({
