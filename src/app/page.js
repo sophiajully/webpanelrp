@@ -70,10 +70,49 @@ const [loadingPombo, setLoadingPombo] = useState(false);
 const [showNovaEmpresaModal, setShowNovaEmpresaModal] = useState(false);
 const [novaEmpresaData, setNovaEmpresaData] = useState({ name: "", colorPrimary: "#8b0000" });
 const [isMobile, setIsMobile] = useState(false);
+const [announcements, setAnnouncements] = useState([]);
+const [newNotice, setNewNotice] = useState({ title: "", content: "", priority: false });
+
+// Função para carregar avisos
+const fetchAnnouncements = useCallback(async () => {
+  try {
+    const res = await fetch('/api/announcements');
+    const data = await res.json();
+    
+    // VERIFICAÇÃO: Só define se o data for um Array, senão define array vazio
+    if (Array.isArray(data)) {
+      setAnnouncements(data);
+    } else {
+      console.error("A API não retornou uma lista:", data);
+      setAnnouncements([]);
+    }
+  } catch (error) {
+    console.error("Erro ao buscar avisos:", error);
+    setAnnouncements([]);
+  }
+}, []);
 
 useEffect(() => {
+  if (activeTab === "tab-avisos") fetchAnnouncements();
+}, [activeTab, fetchAnnouncements]);
+
+const handlePostNotice = async () => {
+  if (!newNotice.title || !newNotice.content) return;
+  await fetch('/api/announcements', {
+    method: 'POST',
+    body: JSON.stringify(newNotice)
+  });
+  setNewNotice({ title: "", content: "", priority: false });
+  fetchAnnouncements();
+};
+
+const handleDeleteNotice = async (id) => {
+  await fetch(`/api/announcements?id=${id}`, { method: 'DELETE' });
+  fetchAnnouncements();
+};
+useEffect(() => {
   const handleResize = () => setIsMobile(window.innerWidth < 768);
-  handleResize(); // Executa ao carregar
+  handleResize(); 
   window.addEventListener('resize', handleResize);
   return () => window.removeEventListener('resize', handleResize);
 }, []);
@@ -245,7 +284,6 @@ const carregarPombo = useCallback(async () => {
         console.error("Erro ao carregar pombo:", err);
     }
 }, []);
-
 
 useEffect(() => {
     if (showPerfilModal) carregarPombo();
@@ -720,8 +758,8 @@ if (status === "authenticated" && !session?.user?.companyId) {
 
     <div style={styles.navLabel}>PRINCIPAL</div>
     <div style={styles.navMenu}>
-      <div style={{...styles.navItem, ...(activeTab === "tab-anuncios" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-vendas", "Nova Encomenda"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
-          <Bell size={18} /> Anúncios
+      <div style={{...styles.navItem, ...(activeTab === "tab-avisos" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-avisos", "Avisos"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
+          <Bell size={18} /> Avisos
         </div>
       {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
         <div style={{...styles.navItem, ...(activeTab === "tab-vendas" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-vendas", "Nova Encomenda"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
@@ -749,12 +787,16 @@ if (status === "authenticated" && !session?.user?.companyId) {
           </div>
         </>
       )}
-
-      <div style={styles.navLabel}>GESTAO</div>
-      <div style={styles.navItem} onClick={() => router.push('/mercadao')}>
+      {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
+        <div style={styles.navLabel}>GESTAO</div>
+      )}
+      
+      
+      {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
+        <div style={styles.navItem} onClick={() => router.push('/mercadao')}>
         <Store size={18} /> Mercadão
       </div>
-      
+      )}
       {(session?.user?.isOwner || session?.user?.role?.canAdmin) && (
         <div style={{...styles.navItem, ...(activeTab === "tab-roles" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-roles", "Gerenciar Cargos"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
           <Shield size={18} /> Gerenciar Cargos
@@ -1003,7 +1045,81 @@ if (status === "authenticated" && !session?.user?.companyId) {
     </div>
   </div>
 )}
+        <div id="tab-avisos" style={{...styles.pageContent, display: activeTab === "tab-avisos" ? "flex" : "none"}}>
+  
+  
+  {/* FORMULÁRIO: SÓ APARECE PARA QUEM TEM CANADMIN */}
+  {(session?.user?.role?.isOwner || session?.user?.role?.canAdmin) && (
+    <div style={{...styles.card, borderLeft: '4px solid var(--cor-primaria, #d4a91c)'}}>
+      <div style={styles.cardHeader}>
+        <div style={styles.headerIcon}><Scroll size={18} /></div>
+        <h3>Publicar Novo Edital</h3>
+      </div>
+      <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
+        <input 
+          placeholder="Título do Aviso (Ex: Reunião no Celeiro)" 
+          style={styles.baseInput}
+          value={newNotice.title}
+          onChange={e => setNewNotice({...newNotice, title: e.target.value})}
+        />
+        <textarea 
+          placeholder="Escreva as ordens ou informações aqui..." 
+          style={{...styles.baseInput, minHeight: '100px', resize: 'vertical'}}
+          value={newNotice.content}
+          onChange={e => setNewNotice({...newNotice, content: e.target.value})}
+        />
+        <label style={{...styles.checkLabel, width: 'fit-content'}}>
+          <input 
+            type="checkbox" 
+            checked={newNotice.priority}
+            onChange={e => setNewNotice({...newNotice, priority: e.target.checked})}
+          />
+          <span style={{color: newNotice.priority ? '#ff4c4c' : '#888'}}>Marcar como Urgente</span>
+        </label>
+        <button style={{...styles.baseButton, ...styles.buttonPrimary}} onClick={handlePostNotice}>
+          Fixar no Mural
+        </button>
+      </div>
+    </div>
+  )}
+
+  {/* LISTA DE ANÚNCIOS */}
+  <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
+    {announcements.length === 0 && <p style={{textAlign: 'center', color: '#666'}}>Nenhum edital fixado no momento.</p>}
+    
+    {announcements.map((notice) => (
+      <div key={notice.id} style={{
+        ...styles.card, 
+        border: notice.priority ? '1px solid #ff4c4c' : styles.card.border,
+        position: 'relative',
+        background: notice.priority ? 'rgba(255, 76, 76, 0.02)' : styles.card.background
+      }}>
+        {notice.priority && (
+          <div style={{position: 'absolute', top: '-10px', right: '20px', background: '#ff4c4c', color: '#fff', fontSize: '0.6rem', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold'}}>
+            URGENTE
+          </div>
+        )}
         
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px'}}>
+          <div>
+            <h4 style={{color: notice.priority ? '#ff4c4c' : '#d4a91c', margin: 0, fontSize: '1.1rem'}}>{notice.title}</h4>
+            <small style={{color: '#555', fontSize: '0.7rem'}}>Postado por {notice.author} em {new Date(notice.createdAt).toLocaleDateString()}</small>
+          </div>
+          
+          {session?.user?.role?.canAdmin && (
+            <button onClick={() => handleDeleteNotice(notice.id)} style={{background: 'none', border: 'none', color: '#444', cursor: 'pointer'}}>
+              <Trash2 size={16} />
+            </button>
+          )}
+        </div>
+        
+        <p style={{color: '#9ca3af', fontSize: '0.9rem', whiteSpace: 'pre-line', lineHeight: '1.5'}}>
+          {notice.content}
+        </p>
+      </div>
+    ))}
+  </div>
+</div>
         <div id="tab-vendas" style={{...styles.pageContent, display: activeTab === "tab-vendas" ? "flex" : "none"}}>
           <div style={styles.card}>
             <div style={styles.cardHeader}>
