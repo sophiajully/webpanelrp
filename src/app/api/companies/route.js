@@ -1,28 +1,25 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const page = parseInt(searchParams.get("page")) || 1;
-  const limit = parseInt(searchParams.get("limit")) || 8;
-  const search = searchParams.get("search") || ""; 
+  const limit = parseInt(searchParams.get("limit")) || 12;
+  const search = searchParams.get("search") || "";
+  
+  // Se 'all' for true, mostramos TUDO. 
+  // Se não for passado (ou for false), mantemos o filtro de ter crafts.
+  const showAll = searchParams.get("all") === "true";
+  
   const skip = (page - 1) * limit;
-const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-    }
+
   try {
-    
     const where = {
-      
       ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
       
-      
-      crafts: {
-        some: {} 
-      }
+      // Lógica Opcional: 
+      // Se showAll for false, aplica o filtro de 'crafts: some'
+      ...(!showAll ? { crafts: { some: {} } } : {})
     };
 
     const [companies, total] = await Promise.all([
@@ -34,7 +31,6 @@ const session = await getServerSession(authOptions);
           id: true, 
           name: true, 
           colorPrimary: true,
-          
           _count: { 
             select: { 
               users: true, 
