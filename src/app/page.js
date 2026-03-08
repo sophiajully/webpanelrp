@@ -50,25 +50,12 @@ export default function Home() {
   const [keyList, setKeyList] = useState([]);
   const [showPerfilModal, setShowPerfilModal] = useState(false);
 const [meuPombo, setMeuPombo] = useState("");
-const [loadingPombo, setLoadingPombo] = useState(false);
- const [cartazData, setCartazData] = useState({
-  titulo: 'PROCURA-SE',
-  subtitulo: 'NEGOCIOS & PROPRIEDADES',
-  fazenda: '',
-  dono: '',
-  pombo: '',
-  servicos: 'GADO • CAVALOS • COLHEITA',
-  rodape: 'REGISTRADO NO DEPARTAMENTO DE AGRICULTURA',
-  selo: 'ORIGINAL',
-  data: 'ESTABELECIDO EM 1899'
-});
+
   const [loadingAction, setLoadingAction] = useState(false);
   const [newRole, setNewRole] = useState({
     name: "", canVendas: true, canCraft: true, canLogs: false, canAdmin: false
   });
   const [minhasEmpresas, setMinhasEmpresas] = useState([]);
-const [messages, setMessages] = useState([]); // Inicia como array vazio
-const [msgInput, setMsgInput] = useState("");
 const [showNovaEmpresaModal, setShowNovaEmpresaModal] = useState(false);
 const [novaEmpresaData, setNovaEmpresaData] = useState({ name: "", colorPrimary: "#8b0000" });
 const [isMobile, setIsMobile] = useState(false);
@@ -121,37 +108,6 @@ useEffect(() => {
 const [previewUrl, setPreviewUrl] = useState("");
 
 
-const getCartazParams = () => {
-  return new URLSearchParams({
-    titulo: cartazData.titulo || 'PROCURA-SE',
-    subtitulo: cartazData.subtitulo || 'NEGOCIOS & PROPRIEDADES',
-    fazenda: cartazData.fazenda || 'VALE DO SERENO',
-    dono: cartazData.dono || 'ARTHUR MORGAN',
-    pombo: cartazData.pombo || 'CORREIO CENTRAL',
-    servicos: cartazData.servicos || 'GADO • CAVALOS • COLHEITA',
-    rodape: cartazData.rodape || 'REGISTRADO NO DEPARTAMENTO DE AGRICULTURA',
-    selo: cartazData.selo || 'ORIGINAL',
-    data: cartazData.data || 'EST. 1899',
-  });
-};
-
-
-const baixarCartaz = async () => {
-  try {
-    const response = await fetch(`/api/cartaz?${getCartazParams().toString()}`);
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `safralog-${session?.user?.name || 'img'}-cartaz.png`; 
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    alert("Erro ao baixar o cartaz");
-  }
-};
 const criarNovaEmpresa = async () => {
   if (!novaEmpresaData.name) return alert("Dê um nome para sua nova fazenda!");
   
@@ -770,20 +726,16 @@ if (status === "authenticated" && !session?.user?.companyId) {
           <ShoppingCart size={18} /> Nova Encomenda
         </div>
       )}
-      
-      <div style={{...styles.navItem, ...(activeTab === "tab-cartaz" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-cartaz", "CARTAZ"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
-        <ImageIcon size={18} /> Cartaz
-      </div>
-      
+      <div style={{...styles.navItem, ...(activeTab === "tab-chat" ? styles.navItemActive : {})}} 
+     onClick={() => showTab("tab-chat", "Chat da Fazenda")}>
+  <MessageSquare size={18} /> Chat Interno
+</div>
       {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
         <div style={{...styles.navItem, ...(activeTab === "tab-pedidos" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-pedidos", "Pedidos"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
           <ClipboardList size={18} /> Histórico de Pedidos
         </div>
       )}
-      <div style={{...styles.navItem, ...(activeTab === "tab-chat" ? styles.navItemActive : {})}} 
-     onClick={() => showTab("tab-chat", "Chat da Fazenda")}>
-  <MessageSquare size={18} /> Chat Interno
-</div>
+      
 
       {(session?.user?.isOwner || session?.user?.role?.canCraft) && (
         <>
@@ -884,121 +836,6 @@ if (status === "authenticated" && !session?.user?.companyId) {
             <Settings size={20} />
           </button>
         </header>
-
-
-
-<div id="tab-cartaz" style={{...styles.pageContent, display: activeTab === "tab-cartaz" ? "block" : "none"}}>
-<div style={!isMobile ? { 
-    ...styles.grid2Cols, 
-    gap: '24px', 
-    alignItems: 'flex-start' 
-  } : { 
-    display: 'flex', 
-    flexDirection: 'column', 
-    gap: '20px' 
-  }}>
-    <div style={{...styles.card, margin: 0}}>
-      <div style={styles.cardHeader}>
-        <div style={styles.headerIcon}><ImageIcon size={18} /></div>
-        <h3 style={{margin: 0, fontSize: '1.1rem'}}>Gerador de Cartaz Real</h3>
-      </div>
-      
-      <div style={{display: 'flex', flexDirection: 'column', gap: '15px', padding: '10px 0'}}>
-        <div style={styles.inputWrapper}>
-          <label style={styles.labelInput}>Título Principal</label>
-          <input type="text" style={styles.baseInput} value={cartazData.titulo || ''}
-            onChange={(e) => setCartazData({...cartazData, titulo: e.target.value})} />
-        </div>
-
-        <div style={styles.inputWrapper}>
-          <label style={styles.labelInput}>Subtítulo (Faixa Escura)</label>
-          <input type="text" style={styles.baseInput} value={cartazData.subtitulo || ''}
-            onChange={(e) => setCartazData({...cartazData, subtitulo: e.target.value})} />
-        </div>
-
-        <div style={styles.grid2Cols}>
-          <div style={styles.inputWrapper}>
-            <label style={styles.labelInput}>Fazenda / Empresa</label>
-            <input type="text" style={styles.baseInput} value={cartazData.fazenda || ''}
-              onChange={(e) => setCartazData({...cartazData, fazenda: e.target.value})} />
-          </div>
-          <div style={styles.inputWrapper}>
-            <label style={styles.labelInput}>Proprietário</label>
-            <input type="text" style={styles.baseInput} value={cartazData.dono || ''}
-              onChange={(e) => setCartazData({...cartazData, dono: e.target.value})} />
-          </div>
-        </div>
-
-        <div style={styles.inputWrapper}>
-          <label style={styles.labelInput}>Serviços (Separados por •)</label>
-          <input type="text" style={styles.baseInput} value={cartazData.servicos || ''}
-            onChange={(e) => setCartazData({...cartazData, servicos: e.target.value})} />
-        </div>
-
-        <div style={{display: 'flex', gap: '10px'}}>
-           {!isMobile && (
-            <button 
-            style={{...styles.baseButton, background: '#444', color: '#fff', flex: 1, height: '45px'}}
-            onClick={() => setPreviewUrl(`/api/cartaz?${getCartazParams().toString()}&v=${Date.now()}`)}
-          >
-            VER PRÉVIA
-          </button>
-           )}
-
-          <button 
-            style={{...styles.baseButton, ...styles.buttonPrimary, flex: 2, height: '45px', fontWeight: 'bold'}}
-            onClick={baixarCartaz}
-          >
-            BAIXAR AGORA
-          </button>
-        </div>
-      </div>
-    </div>
-
-    
-    {!isMobile && (
-      <div style={{
-      ...styles.card, 
-      margin: 0, 
-      background: '#1a1a1a', 
-      padding: '20px',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '600px',
-    }}>
-      <p style={{color: '#fff', fontSize: '0.8rem', marginBottom: '15px', opacity: 0.6}}>PRÉVIA DO CARTAZ</p>
-      
-      <div style={{
-        width: '100%',
-        maxWidth: '350px',
-        boxShadow: '0 20px 50px rgba(0,0,0,0.8)',
-        border: '1px solid #333',
-        backgroundColor: '#111',
-        minHeight: '450px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-        {previewUrl ? (
-          <img 
-            src={previewUrl}
-            alt="Preview"
-            style={{ width: '100%', height: 'auto', display: 'block' }}
-          />
-        ) : (
-          <div style={{color: '#555', textAlign: 'center', padding: '20px'}}>
-            <ImageIcon size={48} style={{opacity: 0.2, marginBottom: '10px'}} />
-            <p>Clique em "VER PRÉVIA"<br/>para gerar a imagem</p>
-          </div>
-        )}
-      </div>
-    </div>
-    )}
-
-  </div>
-</div>
 
 {showPerfilModal && (
   <div style={{
