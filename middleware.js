@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { LRUCache } from 'lru-cache';
-
-
-
-
 const cache = new LRUCache({
   max: 10000,
-  ttl: 60 * 1000, 
+  ttl: 60 * 1000,
 });
+
 
 export async function middleware(req) {
   
