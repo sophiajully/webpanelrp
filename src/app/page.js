@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { Annoyed, Image as ImageIcon } from "lucide-react";
 import { 
   ShoppingCart, 
-  ClipboardList, 
+  ClipboardList,
+  MessageSquare,
   Hammer, 
   Beef, 
   Shield, 
@@ -66,7 +67,8 @@ const [loadingPombo, setLoadingPombo] = useState(false);
     name: "", canVendas: true, canCraft: true, canLogs: false, canAdmin: false
   });
   const [minhasEmpresas, setMinhasEmpresas] = useState([]);
-
+const [messages, setMessages] = useState([]); // Inicia como array vazio
+const [msgInput, setMsgInput] = useState("");
 const [showNovaEmpresaModal, setShowNovaEmpresaModal] = useState(false);
 const [novaEmpresaData, setNovaEmpresaData] = useState({ name: "", colorPrimary: "#8b0000" });
 const [isMobile, setIsMobile] = useState(false);
@@ -239,10 +241,12 @@ const trocarEmpresaAtiva = async (novoCompanyId) => {
 
 
 useEffect(() => {
+  
   if (session?.user?.isOwner) {
     carregarMinhasEmpresas();
   }
 }, [session?.user?.isOwner, carregarMinhasEmpresas]);
+
 
   const handleQtdChange = (id, valor) => {
     setProducaoQtds(prev => ({ ...prev, [id]: valor }));
@@ -776,6 +780,10 @@ if (status === "authenticated" && !session?.user?.companyId) {
           <ClipboardList size={18} /> Histórico de Pedidos
         </div>
       )}
+      <div style={{...styles.navItem, ...(activeTab === "tab-chat" ? styles.navItemActive : {})}} 
+     onClick={() => showTab("tab-chat", "Chat da Fazenda")}>
+  <MessageSquare size={18} /> Chat Interno
+</div>
 
       {(session?.user?.isOwner || session?.user?.role?.canCraft) && (
         <>
@@ -1120,6 +1128,42 @@ if (status === "authenticated" && !session?.user?.companyId) {
     ))}
   </div>
 </div>
+<div id="tab-chat" style={{ display: activeTab === "tab-chat" ? "flex" : "none", flexDirection: 'column' }}>
+  
+  {/* LISTA DE MENSAGENS */}
+  <div style={{ flex: 1, overflowY: 'auto', minHeight: '300px' }}>
+<div id="tab-chat" style={{
+  display: activeTab === "tab-chat" ? "flex" : "none", 
+  height: 'calc(100vh - 160px)', // Ajusta a altura para sobrar espaço para o menu
+  flexDirection: 'column',
+  padding: '10px'
+}}>
+  <div style={{
+    flex: 1,
+    borderRadius: '12px',
+    overflow: 'hidden',
+    border: '1px solid rgba(255,255,255,0.1)',
+    background: '#1a1a1a'
+  }}>
+    <iframe 
+      // Adicionei o parâmetro nickname para pegar o nome do usuário do seu site
+      src={`https://organizations.minnit.chat/974651312171058/c/Main?embed&nickname=${session?.user?.username || ''}`}
+      style={{ 
+        width: '100%', 
+        height: '100%', 
+        border: 'none' 
+      }} 
+    />
+  </div>
+  
+  {/* Aviso discreto sobre moderação */}
+  <small style={{ color: '#666', marginTop: '5px', textAlign: 'center' }}>
+    Chat Interno - Respeite as regras da empresa.
+  </small>
+</div>
+  </div>
+</div>
+
         <div id="tab-vendas" style={{...styles.pageContent, display: activeTab === "tab-vendas" ? "flex" : "none"}}>
           <div style={styles.card}>
             <div style={styles.cardHeader}>
@@ -2262,4 +2306,4 @@ const styles = {
     background: 'transparent',
     cursor: 'pointer'
   }
-};
+}
