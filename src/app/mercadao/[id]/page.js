@@ -10,6 +10,7 @@ export default function FornecedorPage({ params }) {
   const router = useRouter();
   const resolvedParams = use(params);
   const id = resolvedParams.id;
+
   
   const [empresa, setEmpresa] = useState(null);
   const [carrinho, setCarrinho] = useState([]);
@@ -87,7 +88,7 @@ export default function FornecedorPage({ params }) {
                 title: "📩 Nova Proposta Comercial!",
                 color: 0xd4a91c,
                 fields: [
-                  { name: "👤 Cliente", value: session?.user?.username || "Desconhecido", inline: true },
+                  { name: "👤 Cliente", value: session?.user?.name || "Desconhecido", inline: true },
                   { name: "📫 Pombo", value: `${session?.user?.pombo || 'Não Informado'}`, inline: true }, 
                   { name: "💰 Valor total", value: `**$ ${total.toFixed(2)}**` },
                   { name: "📝 Itens", value: itensTexto },
