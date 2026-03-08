@@ -9,7 +9,9 @@ import {
   ClipboardList,
   MessageSquare,
   Hammer, 
-  Beef, 
+  Beef,
+  FileText,
+  X,
   Shield, 
   Users,
   Bell,
@@ -61,8 +63,8 @@ const [novaEmpresaData, setNovaEmpresaData] = useState({ name: "", colorPrimary:
 const [isMobile, setIsMobile] = useState(false);
 const [announcements, setAnnouncements] = useState([]);
 const [newNotice, setNewNotice] = useState({ title: "", content: "", priority: false });
-
-// Função para carregar avisos
+const [isModalReceitaOpen, setIsModalReceitaOpen] = useState(false);
+const [isModalVendaOpen, setIsModalVendaOpen] = useState(false);
 const fetchAnnouncements = useCallback(async () => {
   try {
     const res = await fetch('/api/announcements');
@@ -727,13 +729,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
 </div>
       {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
         <div style={{...styles.navItem, ...(activeTab === "tab-vendas" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-vendas", "Nova Encomenda"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
-          <ShoppingCart size={18} /> Nova Encomenda
-        </div>
-      )}
-      
-      {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
-        <div style={{...styles.navItem, ...(activeTab === "tab-pedidos" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-pedidos", "Pedidos"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
-          <ClipboardList size={18} /> Histórico de Pedidos
+          <ShoppingCart size={18} /> Pedidos
         </div>
       )}
       
@@ -828,7 +824,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
         <header style={styles.mainHeader}>
           <div>
             <span style={styles.breadcrumb}>Dashboard / {activeTab.replace("tab-", "")}</span>
-            <h2 id="page-title" style={styles.pageTitle}>Nova Encomenda</h2>
+            <h2 id="page-title" style={styles.pageTitle}>Pedidos</h2>
           </div>
           <button style={styles.btnSettings} onClick={() => window.toggleModal(true)}>
             <Settings size={20} />
@@ -998,56 +994,110 @@ if (status === "authenticated" && !session?.user?.companyId) {
 </div>
   </div>
 </div>
+<div id="tab-vendas" style={{...styles.pageContent, display: activeTab === "tab-vendas" ? "flex" : "none"}}>
+  
+  {/* Botão para abrir o processo de venda */}
+  <div style={{ maxWidth: '800px', width: '100%', margin: '0 auto', display: 'flex', justifyContent: 'flex-end' }}>
+    <button 
+      style={{...styles.baseButton, ...styles.buttonPrimary}} 
+      onClick={() => setIsModalVendaOpen(true)}
+    >
+      <ShoppingCart size={18} /> Nova Encomenda
+    </button>
+  </div>
 
-        <div id="tab-vendas" style={{...styles.pageContent, display: activeTab === "tab-vendas" ? "flex" : "none"}}>
-          <div style={styles.card}>
-            <div style={styles.cardHeader}>
-              <div style={styles.headerIcon}><ShoppingCart size={18} /></div>
-              <h3>Dados da Encomenda</h3>
-            </div>
-            <div style={styles.grid2Cols}>
-              <div style={styles.inputWrapper}>
-                <label style={styles.labelInput}>Cliente</label>
-                <input type="text" id="clienteNome" placeholder="Nome Completo" style={styles.baseInput} />
-              </div>
-              <div style={styles.inputWrapper}>
-                <label style={styles.labelInput}>Contato</label>
-                <input type="text" id="clientePombo" placeholder="ID/Telefone/Pombo" style={styles.baseInput} />
-              </div>
-            </div>
-            
-            <div style={{...styles.divider, margin: '32px 0'}} />
+  {/* Lista de Movimentações (Sempre visível na aba) */}
+  <div style={{...styles.card, maxWidth: '800px', width: '100%', margin: '0 auto'}}>
+    <div style={styles.cardHeader}>
+      <div style={styles.headerIcon}><ClipboardList size={18} /></div>
+      <h3>Histórico de Vendas</h3>
+    </div>
+    {/* Aplicando a barra de rolagem que fizemos na outra aba */}
+    <div id="listaPedidosGeral" style={{...styles.producaoGrid, minHeight: '100px'}}>
+      Carregando registros...
+    </div>
+  </div>
 
-            <div style={styles.cardHeader}>
-              <div style={styles.headerIcon}><Beef size={18} /></div>
-              <h3>Seleção de Produtos</h3>
-            </div>
-            <div style={styles.grid2Cols}>
-              <div style={styles.inputWrapper}>
-                <label style={styles.labelInput}>Produto</label>
-                <select id="produtoSelect" style={styles.baseInput}></select>
-              </div>
-              <div style={styles.inputWrapper}>
-                <label style={styles.labelInput}>Quantidade</label>
-                <input type="number" id="quantidadeItem" placeholder="0" style={styles.baseInput} />
-              </div>
-            </div>
-            <button style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '24px'}} onClick={() => window.app.adicionarItem()}>
-              Adicionar à Lista
-            </button>
+  {/* 👇 MODAL UNIFICADO: NOVA ENCOMENDA E RECIBO */}
+  {isModalVendaOpen && (
+    <div style={styles.modalOverlay}>
+      <div style={{...styles.modalContent, maxWidth: '900px'}}>
+        
+        <div style={styles.modalHeader}>
+          <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+            <div style={styles.headerIcon}><ShoppingCart size={18} /></div>
+            <h3 style={{margin: 0}}>Gerar Nova Encomenda</h3>
           </div>
-
-          <div style={{...styles.card, borderTop: '4px solid var(--cor-primaria)'}}>
-            <div style={styles.cardHeader}>
-              <div style={styles.headerIcon}><ClipboardList size={18} /></div>
-              <h3>Resumo do Pedido</h3>
-            </div>
-            <div id="listaEncomenda" style={styles.orderListContainer}></div>
-            <button onClick={() => window.app.calcularEncomenda()} style={{...styles.baseButton, ...styles.buttonOutline, width: '100%'}}>
-              Finalizar e Gerar Recibo
-            </button>
-          </div>
+          <button style={styles.btnCloseModal} onClick={() => setIsModalVendaOpen(false)}>
+            <X size={20} />
+          </button>
         </div>
+
+        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px'}}>
+          
+          {/* Coluna Esquerda: Cadastro e Seleção */}
+          <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
+            <div style={{...styles.card, background: '#161922', padding: '20px'}}>
+              <h4 style={{fontSize: '0.8rem', color: '#d4a91c', marginBottom: '15px', textTransform: 'uppercase'}}>Dados do Cliente</h4>
+              <div style={styles.gridResponsive}>
+                <div style={styles.inputWrapper}>
+                  <label style={styles.labelInput}>Cliente</label>
+                  <input type="text" id="clienteNome" placeholder="Nome Completo" style={styles.baseInput} />
+                </div>
+                <div style={styles.inputWrapper}>
+                  <label style={styles.labelInput}>Contato</label>
+                  <input type="text" id="clientePombo" placeholder="ID/Telefone" style={styles.baseInput} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{...styles.card, background: '#161922', padding: '20px'}}>
+              <h4 style={{fontSize: '0.8rem', color: '#d4a91c', marginBottom: '15px', textTransform: 'uppercase'}}>Produtos</h4>
+              <div style={styles.gridResponsive}>
+                <div style={styles.inputWrapper}>
+                  <label style={styles.labelInput}>Produto</label>
+                  <select id="produtoSelect" style={styles.baseInput}></select>
+                </div>
+                <div style={styles.inputWrapper}>
+                  <label style={styles.labelInput}>Quantidade</label>
+                  <input type="number" id="quantidadeItem" placeholder="0" style={styles.baseInput} />
+                </div>
+              </div>
+              <button 
+                style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '20px', width: '100%'}} 
+                onClick={() => window.app.adicionarItem()}
+              >
+                + Adicionar Item
+              </button>
+            </div>
+          </div>
+
+          {/* Coluna Direita: Resumo e Finalização */}
+          <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
+            <div style={{...styles.card, background: '#161922', padding: '20px', flex: 1, display: 'flex', flexDirection: 'column'}}>
+              <h4 style={{fontSize: '0.8rem', color: '#d4a91c', marginBottom: '15px', textTransform: 'uppercase'}}>Resumo do Pedido</h4>
+              <div id="listaEncomenda" style={{flex: 1, overflowY: 'auto', minHeight: '150px', marginBottom: '20px'}}>
+                {/* Os itens adicionados aparecem aqui */}
+              </div>
+              
+              <button 
+                onClick={() => {
+                  window.app.calcularEncomenda();
+                  // setIsModalVendaOpen(false);
+                }} 
+                style={{...styles.baseButton, ...styles.buttonOutline, width: '100%', borderColor: '#d4a91c', color: '#d4a91c'}}
+              >
+                <FileText size={18} /> Finalizar e Gerar Recibo
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  )}
+</div>
 <div id="tab-logs" style={{...styles.pageContent, display: activeTab === "tab-logs" ? "flex" : "none", flexDirection: 'column', gap: '24px'}}>
   
   
@@ -1140,57 +1190,21 @@ if (status === "authenticated" && !session?.user?.companyId) {
   </div>
 </div>
         
-        <div id="tab-pedidos" style={{...styles.pageContent, display: activeTab === "tab-pedidos" ? "block" : "none"}}>
-          <div style={styles.card}>
-            <div style={styles.cardHeader}>
-              <div style={styles.headerIcon}><ClipboardList size={18} /></div>
-              <h3>Últimas Movimentações</h3>
-            </div>
-            <div id="listaPedidosGeral" style={styles.emptyState}>Carregando registros...</div>
-          </div>
-        </div>
 
         
-      <div id="tab-registrar" style={{...styles.pageContent, display: activeTab === "tab-registrar" ? "flex" : "none"}}>
+   <div id="tab-registrar" style={{...styles.pageContent, display: activeTab === "tab-registrar" ? "flex" : "none"}}>
   
-  <div style={{...styles.card, maxWidth: '800px', width: '100%', margin: '0 auto'}}>
-    <div style={styles.cardHeader}>
-      <div style={styles.headerIcon}><Hammer size={18} /></div>
-      <h3>Configuração de Receita</h3>
-    </div>
-    
-    {/* 👇 Usando o grid responsivo aqui */}
-    <div style={styles.gridResponsive}>
-      <div style={styles.inputWrapper}>
-        <label style={styles.labelInput}>Nome do Produto</label>
-        <input type="text" id="craftNome" placeholder="Ex: Carne de Sol" style={styles.baseInput} />
-      </div>
-      <div style={styles.inputWrapper}>
-        <label style={styles.labelInput}>Qtd. Produzida</label>
-        <input type="number" id="unidades" placeholder="1" style={styles.baseInput} />
-      </div>
-      <div style={styles.inputWrapper}>
-        <label style={styles.labelInput}>Preço Final</label>
-        <input type="number" id="price" placeholder="$ 0.00" style={styles.baseInput} />
-      </div>
-    </div>
-
-    <div style={{marginTop: '24px'}}>
-      <h4 style={{fontSize: '0.85rem', color: '#fff', marginBottom: '12px'}}>Insumos Necessários</h4>
-      <div id="listaInsumosDinamicos" style={{display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px'}}></div>
-      <button style={{...styles.baseButton, ...styles.buttonOutline, fontSize: '0.8rem', width: 'fit-content'}} onClick={() => window.app.adicionarCampoInsumo()}>
-        + Novo Insumo
-      </button>
-    </div>
-
-    <button style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '32px', width: '100%'}} onClick={() => {
-      window.app.registrarCraft();
-      refreshData();
-    }}>
-      Registrar no Catálogo
+  {/* 👇 Botão para abrir o modal */}
+  <div style={{ maxWidth: '800px', width: '100%', margin: '0 auto', display: 'flex', justifyContent: 'flex-end' }}>
+    <button 
+      style={{...styles.baseButton, ...styles.buttonPrimary}} 
+      onClick={() => setIsModalReceitaOpen(true)}
+    >
+      <Hammer size={18} /> Adicionar Nova Receita
     </button>
   </div>
 
+  {/* Card: Planejamento de Produção */}
   <div style={{...styles.card, maxWidth: '800px', width: '100%', margin: '0 auto'}}>
     <div style={styles.cardHeader}>
       <div style={styles.headerIcon}><Calculator size={18} /></div>
@@ -1201,13 +1215,11 @@ if (status === "authenticated" && !session?.user?.companyId) {
     <div style={styles.producaoGrid}>
       {craftList.map((item) => (
         <div key={item.id} style={styles.producaoItem}>
-          {/* Informações da Receita */}
           <div style={{flex: '1 1 min-content', minWidth: '120px'}}>
             <div style={styles.producaoItemTitle}>{item.name}</div>
             <div style={styles.producaoItemMeta}>Unidade base: {item.unit || 'un'}</div>
           </div>
           
-          {/* 👇 Input e Botão agrupados para não quebrarem feio no celular */}
           <div style={styles.producaoItemActions}>
             <input 
               type="number" 
@@ -1232,6 +1244,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
     </button>
   </div>
 
+  {/* Card: Lista de Materiais */}
   <div id="materiaisResultado" style={{...styles.card, maxWidth: '800px', width: '100%', margin: '0 auto'}}>
     <div style={styles.cardHeader}>
       <div style={{...styles.headerIcon, background: 'rgba(0,255,144,0.1)', color: '#00ff90'}}><Package size={18} /></div>
@@ -1240,8 +1253,58 @@ if (status === "authenticated" && !session?.user?.companyId) {
     <div id="listaInsumosSomados" style={{display: 'flex', flexDirection: 'column', gap: '8px'}}></div>
   </div>
 
-</div>
 
+  {/* 👇 MODAL DE CONFIGURAÇÃO DE RECEITA */}
+  {isModalReceitaOpen && (
+    <div style={styles.modalOverlay}>
+      <div style={styles.modalContent}>
+        
+        {/* Cabeçalho do Modal com botão de fechar */}
+        <div style={styles.modalHeader}>
+          <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+            <div style={styles.headerIcon}><Hammer size={18} /></div>
+            <h3 style={{margin: 0}}>Configuração de Receita</h3>
+          </div>
+          <button style={styles.btnCloseModal} onClick={() => setIsModalReceitaOpen(false)}>
+            <X size={20} /> {/* Certifique-se de importar o ícone 'X' do lucide-react */}
+          </button>
+        </div>
+        
+        <div style={styles.gridResponsive}>
+          <div style={styles.inputWrapper}>
+            <label style={styles.labelInput}>Nome do Produto</label>
+            <input type="text" id="craftNome" placeholder="Ex: Carne de Sol" style={styles.baseInput} />
+          </div>
+          <div style={styles.inputWrapper}>
+            <label style={styles.labelInput}>Qtd. Produzida</label>
+            <input type="number" id="unidades" placeholder="1" style={styles.baseInput} />
+          </div>
+          <div style={styles.inputWrapper}>
+            <label style={styles.labelInput}>Preço Final</label>
+            <input type="number" id="price" placeholder="$ 0.00" style={styles.baseInput} />
+          </div>
+        </div>
+
+        <div style={{marginTop: '24px'}}>
+          <h4 style={{fontSize: '0.85rem', color: '#fff', marginBottom: '12px'}}>Insumos Necessários</h4>
+          <div id="listaInsumosDinamicos" style={{display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px'}}></div>
+          <button style={{...styles.baseButton, ...styles.buttonOutline, fontSize: '0.8rem', width: 'fit-content'}} onClick={() => window.app.adicionarCampoInsumo()}>
+            + Novo Insumo
+          </button>
+        </div>
+
+        <button style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '32px', width: '100%'}} onClick={() => {
+          window.app.registrarCraft();
+          refreshData();
+          setIsModalReceitaOpen(false); // 👇 Fecha o modal automaticamente após registrar
+        }}>
+          Registrar no Catálogo
+        </button>
+      </div>
+    </div>
+  )}
+
+</div>
         
 
 
@@ -1740,6 +1803,48 @@ const styles = {
     color: '#fff',
     letterSpacing: '-0.02em'
   },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backdropFilter: 'blur(5px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999, // Garante que fique por cima de tudo
+  },
+  modalContent: {
+    background: '#0d0f14',
+    border: '1px solid #1c1f26',
+    borderRadius: '16px',
+    padding: '32px',
+    width: '90%',
+    maxWidth: '800px',
+    maxHeight: '90vh',
+    overflowY: 'auto',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '24px'
+  },
+  btnCloseModal: {
+    background: 'transparent',
+    border: 'none',
+    color: '#9ca3af',
+    cursor: 'pointer',
+    padding: '8px',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: '0.2s'
+  },
   companyLogo: {
     width: '32px',
     height: '32px',
@@ -1978,9 +2083,12 @@ const styles = {
   },
 
   
-  producaoGrid: {
+ producaoGrid: {
     display: 'grid',
-    gap: '12px'
+    gap: '12px',
+    maxHeight: '400px',   // Define a altura limite (pode ajustar esse valor)
+    overflowY: 'auto',    // Cria a barra de rolagem vertical quando passar do limite
+    paddingRight: '8px',  // Dá um pequeno espaço para a barra não encostar nos itens
   },
   gridResponsive: {
     display: 'grid',
