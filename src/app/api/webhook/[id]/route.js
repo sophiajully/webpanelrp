@@ -34,28 +34,37 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: "Empresa não encontrada" }, { status: 404 });
     }
 
-    // 2. Extrair dados do formato Discord Embed
-    const embed = body.embeds?.[0];
-    if (!embed) {
-      return NextResponse.json({ error: "Formato de embed inválido" }, { status: 400 });
-    }
+const embed = body.embeds?.[0];
+if (!embed) return NextResponse.json({ error: "Formato inválido" }, { status: 400 });
 
-    const title = embed.title || "Movimentação";
-    const description = (embed.description || "").replace(/\*\*/g, ''); // Limpa os negritos do Discord
-    
-    // Transformar os fields em string, limpando as crases
-    const fieldsContent = embed.fields?.map(f => `${f.name}: ${f.value.replace(/`/g, '')}`).join(" | ");
+// Função auxiliar para pegar valor de um campo pelo nome
+const getFieldValue = (name) => {
+  const field = embed.fields?.find(f => f.name.includes(name));
+  return field ? field.value.replace(/`/g, '') : null;
+};
 
-    // 3. Montar e Salvar o Log
-    const newLog = await prisma.companyLog.create({
-      data: {
-        companyId: companyId,
-        action: title.toUpperCase(),
-        details: `${description} | ${fieldsContent}`, 
-        category: "ARMAZEM",
-        userId: null, 
-      }
-    });
+// Mapeando os dados específicos do seu webhook
+const usuario = (embed.description || "").split("**")[1] || "Desconhecido"; // Pega o nome entre os primeiros **
+const armazem = getFieldValue("Armazém");
+const item = getFieldValue("Item");
+const quantidade = getFieldValue("Quantidade");
+const charId = getFieldValue("ID do Personagem");
+const acao = getFieldValue("Ação") || "MOVIMENTAÇÃO";
+
+// 3. Criando o DETAILS Personalizado
+// Exemplo: "Sarah Whinchester (ID: 83215) RETIROU 1x mane_chicken do armazém fazenda_10"
+const detailsFormatado = `${usuario} (ID: ${charId}) executou ${acao} de ${quantidade}x ${item} no armazém ${armazem}.`;
+
+// 4. Salvar no Banco
+const newLog = await prisma.companyLog.create({
+  data: {
+    companyId: companyId,
+    action: `📦 ${acao}: ${item}`.toUpperCase(), // Ex: 📦 RETIRADA: MANE_CHICKEN
+    details: detailsFormatado, 
+    category: "ARMAZEM",
+    userId: null, 
+  }
+});
 
     // 4. Resposta com Headers de CORS para não travar no site de teste
     return NextResponse.json({ 
