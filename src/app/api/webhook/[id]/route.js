@@ -14,7 +14,15 @@ export async function OPTIONS() {
 
 export async function POST(req, { params }) {
   try {
-    const companyId = params.id;
+    // CORREÇÃO AQUI: No Next.js 15+, params é uma Promise!
+    const resolvedParams = await params; 
+    const companyId = resolvedParams.id;
+
+    // Verificação extra para evitar o erro do Prisma
+    if (!companyId) {
+      return NextResponse.json({ error: "ID da empresa não identificado na URL" }, { status: 400 });
+    }
+
     const body = await req.json();
 
     // 1. Validar se a empresa existe
@@ -27,42 +35,39 @@ export async function POST(req, { params }) {
     }
 
     // 2. Extrair dados do formato Discord Embed
-    // Pegamos o primeiro embed do array
     const embed = body.embeds?.[0];
     if (!embed) {
       return NextResponse.json({ error: "Formato de embed inválido" }, { status: 400 });
     }
 
     const title = embed.title || "Movimentação";
-    const description = embed.description || "";
+    const description = (embed.description || "").replace(/\*\*/g, ''); // Limpa os negritos do Discord
     
-    // Transformar os fields do embed em uma string de detalhes legível
-    // Ex: "Item: carne, Quantidade: 5, ID: 8321"
+    // Transformar os fields em string, limpando as crases
     const fieldsContent = embed.fields?.map(f => `${f.name}: ${f.value.replace(/`/g, '')}`).join(" | ");
 
-    // 3. Montar os dados para o seu Schema de Logs
-    const logData = {
-      companyId: companyId,
-      action: title.toUpperCase(), // Ex: 📦 MOVIMENTAÇÃO DO ARMAZÉM
-      details: `${description} | ${fieldsContent}`, 
-      category: "ARMAZEM", // Categoria automática baseada no bot
-      userId: null, // Como vem de webhook externo, não tem usuário logado no painel
-    };
-
-    // 4. Salvar no Banco de Dados usando o modelo que você já tem
+    // 3. Montar e Salvar o Log
     const newLog = await prisma.companyLog.create({
-      data: logData
+      data: {
+        companyId: companyId,
+        action: title.toUpperCase(),
+        details: `${description} | ${fieldsContent}`, 
+        category: "ARMAZEM",
+        userId: null, 
+      }
     });
 
-    // 5. Retornar sucesso (Status 204 ou 200 para o script do jogo não dar erro)
+    // 4. Resposta com Headers de CORS para não travar no site de teste
     return NextResponse.json({ 
       success: true, 
-      message: "Log registrado no painel",
       id: newLog.id 
-    }, { status: 201 });
+    }, { 
+      status: 201,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    });
 
   } catch (error) {
     console.error("[WEBHOOK_LOG_ERROR]", error);
-    return NextResponse.json({ error: "Erro ao processar webhook" }, { status: 500 });
+    return NextResponse.json({ error: "Erro interno", details: error.message }, { status: 500 });
   }
 }
