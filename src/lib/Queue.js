@@ -1,166 +1,90 @@
-import { prisma } from "./prisma";
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { Queue } from "@/lib/Queue"; // Certifique-se de que o caminho está correto
 
-class QueueManager {
-    constructor() {
-        
-        this.activeWebhooks = new Set(); 
-        this.handlers = new Map();
-        this.DEFAULT_DELAY = 1000;
-
-        if (typeof window === "undefined") {
-            this.init();
-        }
-    }
-
-    async init() {
-        try {
-            console.log("[Queue] Sistema iniciado. Recuperando jobs travados...");
-            await prisma.queue.updateMany({
-                where: { status: "processing" },
-                data: { status: "pending" }
-            });
-            
-            this.processAll();
-        } catch (err) {
-            console.error("[Queue] Erro na inicialização:", err);
-        }
-    }
-
-    define(taskName, handler) {
-        this.handlers.set(taskName, handler);
-    }
-
-    sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    async add(taskName, payload = {}) {
-        try {
-            const job = await prisma.queue.create({
-                data: {
-                    taskName,
-                    payload: JSON.stringify(payload),
-                    status: "pending"
-                }
-            });
-
-            console.log(`[Queue] Job ${job.id} adicionado.`);
-            
-            this.processNext(payload.url); 
-            return job;
-        } catch (err) {
-            console.error("[Queue] Erro ao adicionar job:", err);
-            throw err;
-        }
-    }
-
-    
-    async processAll() {
-        const pendingJobs = await prisma.queue.findMany({
-            where: { status: "pending" },
-            select: { payload: true }
-        });
-
-        const urls = [...new Set(pendingJobs.map(j => JSON.parse(j.payload).url))];
-        urls.forEach(url => this.processNext(url));
-    }
-
-    async processNext(webhookUrl) {
-        
-        if (!webhookUrl || this.activeWebhooks.has(webhookUrl)) return;
-
-        this.activeWebhooks.add(webhookUrl);
-
-        try {
-            
-            
-            
-            const job = await prisma.queue.findFirst({
-                where: { 
-                    status: "pending",
-                    payload: { contains: webhookUrl } 
-                },
-                orderBy: { createdAt: "asc" }
-            });
-
-            if (!job) {
-                this.activeWebhooks.delete(webhookUrl);
-                return;
-            }
-
-            await prisma.queue.update({
-                where: { id: job.id },
-                data: { status: "processing" }
-            });
-
-            const handler = this.handlers.get(job.taskName);
-            if (handler) {
-                const payload = JSON.parse(job.payload);
-                
-                try {
-                    await handler(payload);
-
-                    await prisma.queue.update({
-                        where: { id: job.id },
-                        data: { status: "completed" }
-                    });
-
-                    console.log(`[Queue] Webhook ${webhookUrl} - Job ${job.id} OK.`);
-                    await this.sleep(this.DEFAULT_DELAY);
-
-                } catch (error) {
-                    if (error.status === 429) {
-                        const retryAfter = (error.retryAfter || 5) * 1000;
-                        console.warn(`[Queue] Rate Limit no Webhook ${webhookUrl}. Aguardando ${retryAfter}ms`);
-                        
-                        await prisma.queue.update({
-                            where: { id: job.id },
-                            data: { status: "pending" }
-                        });
-
-                        await this.sleep(retryAfter);
-                    } else {
-                        await prisma.queue.update({
-                            where: { id: job.id },
-                            data: { status: "failed", error: error.message }
-                        });
-                    }
-                }
-            }
-        } catch (err) {
-            console.error(`[Queue] Erro crítico na fila ${webhookUrl}:`, err);
-        } finally {
-            
-            this.activeWebhooks.delete(webhookUrl);
-            
-            this.processNext(webhookUrl);
-        }
-    }
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 }
 
-export const Queue = new QueueManager();
+export async function POST(req, { params }) {
+  try {
+    const resolvedParams = await params;
+    const companyId = resolvedParams.id;
 
+    if (!companyId) return NextResponse.json({ error: "ID Inválido" }, { status: 400 });
 
-Queue.define("ENVIAR_WEBHOOK_DISCORD", async (data) => {
-    const { url, embed } = data;
+    const body = await req.json();
 
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            username: "SafraLog",
-            avatar_url: "https://i.imgur.com/cfehoGH.png",
-            embeds: [embed]
-        })
+    // 1. Busca empresa para pegar o webhookLogs dela
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
     });
 
-    if (response.status === 429) {
-        const json = await response.json();
-        const error = new Error("Rate Limited");
-        error.status = 429;
-        error.retryAfter = json.retry_after; 
-        throw error;
+    if (!company) return NextResponse.json({ error: "Empresa não encontrada" }, { status: 404 });
+
+    const embedSource = body.embeds?.[0];
+    if (!embedSource) return NextResponse.json({ error: "Sem dados de embed" }, { status: 400 });
+
+    // Helper para extrair os dados
+    const getFieldValue = (name) => {
+      const field = embedSource.fields?.find(f => f.name.includes(name));
+      return field ? field.value.replace(/`/g, '') : null;
+    };
+
+    const usuario = (embedSource.description || "").split("**")[1] || "Desconhecido";
+    const armazem = getFieldValue("Armazém") || "Geral";
+    const item = getFieldValue("Item") || "Desconhecido";
+    const quantidade = getFieldValue("Quantidade") || "0";
+    const charId = getFieldValue("ID do Personagem") || "N/A";
+    const acao = getFieldValue("Ação") || "MOVIMENTAÇÃO";
+
+    const detailsFormatado = `${usuario} (ID: ${charId}) executou ${acao} de ${quantidade}x ${item} no armazém ${armazem}.`;
+
+    // 2. Salva no banco de dados local (Site)
+    const newLog = await prisma.companyLog.create({
+      data: {
+        companyId: companyId,
+        action: `📦 ${acao}: ${item}`.toUpperCase(),
+        details: detailsFormatado,
+        category: "ARMAZEM",
+        userId: null,
+      }
+    });
+
+    // 3. Adiciona na Fila se a empresa tiver o Webhook configurado
+    if (company.webhookLogs) {
+      // Adicionamos o Job na fila para processamento em background
+      await Queue.add("ENVIAR_WEBHOOK_DISCORD", {
+        url: company.webhookLogs,
+        embed: {
+          title: `📢 LOG DE ARMAZÉM: ${acao}`,
+          description: detailsFormatado,
+          color: acao.includes("RETIRADA") ? 15548997 : 5763719,
+          fields: [
+            { name: "📋 Item", value: `\`${item}\``, inline: true },
+            { name: "🔢 Quantidade", value: `\`${quantidade}\``, inline: true },
+            { name: "👤 Responsável", value: usuario, inline: true }
+          ],
+          footer: { text: `Empresa: ${company.name} | SafraLog` },
+          timestamp: new Date().toISOString()
+        }
+      });
     }
 
-    if (!response.ok) throw new Error(`Erro API Discord: ${response.status}`);
-});
+    return NextResponse.json({ success: true, id: newLog.id }, { 
+      status: 201,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    });
+
+  } catch (error) {
+    console.error("[WEBHOOK_LOG_ERROR]", error);
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+  }
+}
