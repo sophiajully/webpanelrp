@@ -1068,13 +1068,13 @@ if (status === "authenticated" && !session?.user?.companyId) {
           value={newNotice.content}
           onChange={e => setNewNotice({...newNotice, content: e.target.value})}
         />
-        <label style={{...styles.checkLabel, width: 'fit-content'}}>
+        <label style={{...styles.checkLabel, width: 'fit-content', padding: '10px', borderRadius: '7px'}}>
           <input 
-            type="checkbox" 
+            type="checkbox"
             checked={newNotice.priority}
             onChange={e => setNewNotice({...newNotice, priority: e.target.checked})}
           />
-          <span style={{color: newNotice.priority ? '#ff4c4c' : '#888'}}>Marcar como Urgente</span>
+          <span style={{color: newNotice.priority ? '#ff4c4c' : '#888'}}>Urgente</span>
         </label>
         <button style={{...styles.baseButton, ...styles.buttonPrimary}} onClick={handlePostNotice}>
           Fixar no Mural
@@ -1569,18 +1569,60 @@ if (status === "authenticated" && !session?.user?.companyId) {
               </div>
 
               <label style={{...styles.labelInput, marginTop: '24px'}}>Permissões de Módulo</label>
-              <div style={styles.checkboxGrid}>
-                {['canVendas', 'canCraft', 'canLogs', 'canAdmin'].map((perm) => (
-                   <label key={perm} style={styles.checkLabel}>
-                    <input 
-                      type="checkbox" 
-                      checked={newRole[perm]} 
-                      onChange={(e) => setNewRole({ ...newRole, [perm]: e.target.checked })} 
-                    />
-                    <span>{perm.replace('can', '')}</span>
-                  </label>
-                ))}
-              </div>
+  <div style={styles.checkboxGrid}>
+  {['canVendas', 'canCraft', 'canLogs', 'canAdmin'].map((perm) => {
+    const isChecked = newRole[perm];
+    return (
+      <label 
+        key={perm} 
+        style={{
+          ...styles.checkLabel,
+          // Agora usando suas variáveis CSS
+          backgroundColor: isChecked ? 'var(--cor-primaria-bg, rgba(212, 169, 28, 0.1))' : 'rgba(0, 0, 0, 0.3)',
+          borderColor: isChecked ? 'var(--cor-primaria, #d4a91c)' : '#2d2d44',
+          color: isChecked ? '#fff' : '#666',
+          padding: '10px',
+          position: 'relative', 
+          overflow: 'hidden',
+          borderRadius: '7px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease'
+        }}
+      >
+        <input 
+          type="checkbox" 
+          style={styles.hiddenInput} 
+          checked={isChecked} 
+          onChange={(e) => setNewRole({ ...newRole, [perm]: e.target.checked })} 
+        />
+        
+        {/* Checkbox Customizado usando a cor de Destaque */}
+        <div style={{
+          ...styles.customCheck,
+          backgroundColor: isChecked ? 'var(--cor-destaque, #ff4c4c)' : 'transparent',
+          borderColor: isChecked ? 'var(--cor-destaque, #ff4c4c)' : '#444',
+          width: '16px',
+          height: '16px',
+          border: '1px solid',
+          borderRadius: '4px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2 // Fica abaixo do clique mas visível
+        }}>
+          {isChecked && <CheckCircle size={10} color="#fff" strokeWidth={4} />}
+        </div>
+        
+        <span style={{...styles.permText, zIndex: 2}}>
+          {perm.replace('can', '').toUpperCase()}
+        </span>
+      </label>
+    );
+  })}
+</div>
 
               <button style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '24px', width: '100%'}} onClick={criarRole} disabled={loadingAction}>
                 {loadingAction ? "Salvando..." : "Cadastrar Cargo"}
@@ -2137,7 +2179,54 @@ const styles = {
     color: '#9ca3af',
     cursor: 'pointer'
   },
-  
+  hiddenInput: {
+    // Estas 4 linhas garantem que o checkbox suma em qualquer navegador
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    MozAppearance: 'none',
+    position: 'absolute', // Tira do fluxo para não empurrar o texto
+    
+    // Opcional: mantém o elemento funcional para acessibilidade mas invisível
+    opacity: 0,
+    width: 0,
+    height: 0,
+    margin: 0,
+  },
+
+  checkboxGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+    gap: '10px',
+    marginTop: '15px',
+  },
+
+  checkLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    cursor: 'pointer',
+    position: 'relative', // Importante por causa do input absolute
+    border: '1px solid #2d2d44',
+    transition: 'all 0.2s ease',
+  },
+
+  customCheck: {
+    width: '16px',
+    height: '16px',
+    border: '1px solid #444',
+    borderRadius: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0, // Impede que o quadradinho amasse em telas pequenas
+  },
+
+  permText: {
+    fontSize: '0.65rem',
+    fontWeight: '800',
+    letterSpacing: '1px',
+    fontFamily: 'serif',
+  },
   
   keyCode: {
     fontFamily: 'monospace',
