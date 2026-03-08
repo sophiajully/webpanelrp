@@ -14,18 +14,16 @@ export async function OPTIONS() {
 
 export async function POST(req, { params }) {
   try {
-    // CORREÇÃO AQUI: No Next.js 15+, params é uma Promise!
-    const resolvedParams = await params; 
+    const resolvedParams = await params;
     const companyId = resolvedParams.id;
 
-    // Verificação extra para evitar o erro do Prisma
     if (!companyId) {
-      return NextResponse.json({ error: "ID da empresa não identificado na URL" }, { status: 400 });
+      return NextResponse.json({ error: "ID da empresa não identificado" }, { status: 400 });
     }
 
     const body = await req.json();
 
-    // 1. Validar se a empresa existe
+    // 1. Buscar a empresa e o link do webhook dela
     const company = await prisma.company.findUnique({
       where: { id: companyId },
     });
@@ -34,39 +32,63 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: "Empresa não encontrada" }, { status: 404 });
     }
 
-const embed = body.embeds?.[0];
-if (!embed) return NextResponse.json({ error: "Formato inválido" }, { status: 400 });
+    const embed = body.embeds?.[0];
+    if (!embed) return NextResponse.json({ error: "Formato inválido" }, { status: 400 });
 
-// Função auxiliar para pegar valor de um campo pelo nome
-const getFieldValue = (name) => {
-  const field = embed.fields?.find(f => f.name.includes(name));
-  return field ? field.value.replace(/`/g, '') : null;
-};
+    const getFieldValue = (name) => {
+      const field = embed.fields?.find(f => f.name.includes(name));
+      return field ? field.value.replace(/`/g, '') : null;
+    };
 
-// Mapeando os dados específicos do seu webhook
-const usuario = (embed.description || "").split("**")[1] || "Desconhecido"; // Pega o nome entre os primeiros **
-const armazem = getFieldValue("Armazém");
-const item = getFieldValue("Item");
-const quantidade = getFieldValue("Quantidade");
-const charId = getFieldValue("ID do Personagem");
-const acao = getFieldValue("Ação") || "MOVIMENTAÇÃO";
+    const usuario = (embed.description || "").split("**")[1] || "Desconhecido";
+    const armazem = getFieldValue("Armazém");
+    const item = getFieldValue("Item");
+    const quantidade = getFieldValue("Quantidade");
+    const charId = getFieldValue("ID do Personagem");
+    const acao = getFieldValue("Ação") || "MOVIMENTAÇÃO";
 
-// 3. Criando o DETAILS Personalizado
-// Exemplo: "Sarah Whinchester (ID: 83215) RETIROU 1x mane_chicken do armazém fazenda_10"
-const detailsFormatado = `${usuario} (ID: ${charId}) executou ${acao} de ${quantidade}x ${item} no armazém ${armazem}.`;
+    const detailsFormatado = `${usuario} (ID: ${charId}) executou ${acao} de ${quantidade}x ${item} no armazém ${armazem}.`;
 
-// 4. Salvar no Banco
-const newLog = await prisma.companyLog.create({
-  data: {
-    companyId: companyId,
-    action: `📦 ${acao}: ${item}`.toUpperCase(), // Ex: 📦 RETIRADA: MANE_CHICKEN
-    details: detailsFormatado, 
-    category: "ARMAZEM",
-    userId: null, 
-  }
-});
+    // 2. Salvar no Banco do Site
+    const newLog = await prisma.companyLog.create({
+      data: {
+        companyId: companyId,
+        action: `📦 ${acao}: ${item}`.toUpperCase(),
+        details: detailsFormatado,
+        category: "ARMAZEM",
+        userId: null,
+      }
+    });
 
-    // 4. Resposta com Headers de CORS para não travar no site de teste
+    // 3. Enviar para o Discord da Empresa (se ela tiver um webhook configurado)
+    if (company.webhookLogs) {
+      try {
+        await fetch(company.webhookLogs, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: "Painel de Gestão - Safra",
+            avatar_url: "https://tysaiw.com/logo.png", // Sua logo aqui
+            embeds: [{
+              title: `📢 LOG DE ARMAZÉM: ${acao}`,
+              description: detailsFormatado,
+              color: acao.includes("RETIRADA") ? 15548997 : 5763719, // Vermelho para retirada, Verde para entrada
+              fields: [
+                { name: "📋 Item", value: `\`${item}\``, inline: true },
+                { name: "🔢 Qtd", value: `\`${quantidade}\``, inline: true },
+                { name: "👤 Responsável", value: usuario, inline: true }
+              ],
+              footer: { text: `Empresa: ${company.name} | Webpanel RP` },
+              timestamp: new Date().toISOString()
+            }]
+          })
+        });
+      } catch (discordError) {
+        console.error("Erro ao enviar para o Discord da empresa:", discordError);
+        // Não barramos a resposta do site se o discord falhar
+      }
+    }
+
     return NextResponse.json({ 
       success: true, 
       id: newLog.id 
