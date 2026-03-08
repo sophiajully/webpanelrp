@@ -741,10 +741,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
       {(session?.user?.isOwner || session?.user?.role?.canCraft) && (
         <>
           <div style={{...styles.navItem, ...(activeTab === "tab-registrar" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-registrar", "Registrar Craft"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
-            <Hammer size={18} /> Registrar Craft
-          </div>
-          <div style={{...styles.navItem, ...(activeTab === "tab-producao" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-producao", "Painel de Produção"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
-            <Beef size={18} /> Painel de Produção
+            <Hammer size={18} /> Craft
           </div>
         </>
       )}
@@ -1154,92 +1151,99 @@ if (status === "authenticated" && !session?.user?.companyId) {
         </div>
 
         
-        <div id="tab-registrar" style={{...styles.pageContent, display: activeTab === "tab-registrar" ? "block" : "none"}}>
-          <div style={{...styles.card, maxWidth: '800px'}}>
-            <div style={styles.cardHeader}>
-              <div style={styles.headerIcon}><Hammer size={18} /></div>
-              <h3>Configuração de Receita</h3>
-            </div>
-            <div style={styles.grid3Cols}>
-              <div style={styles.inputWrapper}>
-                <label style={styles.labelInput}>Nome do Produto</label>
-                <input type="text" id="craftNome" placeholder="Ex: Carne de Sol" style={styles.baseInput} />
-              </div>
-              <div style={styles.inputWrapper}>
-                <label style={styles.labelInput}>Qtd. Produzida</label>
-                <input type="number" id="unidades" placeholder="1" style={styles.baseInput} />
-              </div>
-              <div style={styles.inputWrapper}>
-                <label style={styles.labelInput}>Preço Final</label>
-                <input type="number" id="price" placeholder="$ 0.00" style={styles.baseInput} />
-              </div>
-            </div>
+      <div id="tab-registrar" style={{...styles.pageContent, display: activeTab === "tab-registrar" ? "flex" : "none"}}>
+  
+  <div style={{...styles.card, maxWidth: '800px', width: '100%', margin: '0 auto'}}>
+    <div style={styles.cardHeader}>
+      <div style={styles.headerIcon}><Hammer size={18} /></div>
+      <h3>Configuração de Receita</h3>
+    </div>
+    
+    {/* 👇 Usando o grid responsivo aqui */}
+    <div style={styles.gridResponsive}>
+      <div style={styles.inputWrapper}>
+        <label style={styles.labelInput}>Nome do Produto</label>
+        <input type="text" id="craftNome" placeholder="Ex: Carne de Sol" style={styles.baseInput} />
+      </div>
+      <div style={styles.inputWrapper}>
+        <label style={styles.labelInput}>Qtd. Produzida</label>
+        <input type="number" id="unidades" placeholder="1" style={styles.baseInput} />
+      </div>
+      <div style={styles.inputWrapper}>
+        <label style={styles.labelInput}>Preço Final</label>
+        <input type="number" id="price" placeholder="$ 0.00" style={styles.baseInput} />
+      </div>
+    </div>
 
-            <div style={styles.insumosSection}>
-              <h4 style={styles.sectionTitle}>Insumos Necessários</h4>
-              <div id="listaInsumosDinamicos" style={styles.dynamicList}></div>
-              <button style={{...styles.baseButton, ...styles.buttonOutline, fontSize: '0.8rem'}} onClick={() => window.app.adicionarCampoInsumo()}>
-                + Novo Insumo
-              </button>
-            </div>
+    <div style={{marginTop: '24px'}}>
+      <h4 style={{fontSize: '0.85rem', color: '#fff', marginBottom: '12px'}}>Insumos Necessários</h4>
+      <div id="listaInsumosDinamicos" style={{display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px'}}></div>
+      <button style={{...styles.baseButton, ...styles.buttonOutline, fontSize: '0.8rem', width: 'fit-content'}} onClick={() => window.app.adicionarCampoInsumo()}>
+        + Novo Insumo
+      </button>
+    </div>
 
-            <button style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '32px', width: '100%'}} onClick={() => {
-              window.app.registrarCraft();
-              refreshData();
-            }}>
-              Registrar no Catálogo
+    <button style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '32px', width: '100%'}} onClick={() => {
+      window.app.registrarCraft();
+      refreshData();
+    }}>
+      Registrar no Catálogo
+    </button>
+  </div>
+
+  <div style={{...styles.card, maxWidth: '800px', width: '100%', margin: '0 auto'}}>
+    <div style={styles.cardHeader}>
+      <div style={styles.headerIcon}><Calculator size={18} /></div>
+      <h3>Planejamento de Produção</h3>
+    </div>
+    <p style={{fontSize: '0.85rem', color: '#9ca3af', marginBottom: '20px'}}>Defina as quantidades para calcular os materiais necessários automaticamente.</p>
+    
+    <div style={styles.producaoGrid}>
+      {craftList.map((item) => (
+        <div key={item.id} style={styles.producaoItem}>
+          {/* Informações da Receita */}
+          <div style={{flex: '1 1 min-content', minWidth: '120px'}}>
+            <div style={styles.producaoItemTitle}>{item.name}</div>
+            <div style={styles.producaoItemMeta}>Unidade base: {item.unit || 'un'}</div>
+          </div>
+          
+          {/* 👇 Input e Botão agrupados para não quebrarem feio no celular */}
+          <div style={styles.producaoItemActions}>
+            <input 
+              type="number" 
+              placeholder="0"
+              value={producaoQtds[item.id] || ""} 
+              onChange={(e) => handleQtdChange(item.id, e.target.value)}
+              style={styles.producaoInput} 
+            />
+            <button onClick={() => window.app.removerReceita(item.id)} style={styles.btnActionDelete}>
+              <Trash2 size={16} color="#ef4444" />
             </button>
           </div>
         </div>
+      ))}
+    </div>
+
+    <button 
+      style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '24px', width: '100%'}} 
+      onClick={() => window.app.calcularMateriais(craftList, producaoQtds)}
+    >
+      <Calculator size={18} /> Calcular Totais de Coleta
+    </button>
+  </div>
+
+  <div id="materiaisResultado" style={{...styles.card, maxWidth: '800px', width: '100%', margin: '0 auto'}}>
+    <div style={styles.cardHeader}>
+      <div style={{...styles.headerIcon, background: 'rgba(0,255,144,0.1)', color: '#00ff90'}}><Package size={18} /></div>
+      <h3 style={{color: '#00ff90'}}>Lista de Materiais</h3>
+    </div>
+    <div id="listaInsumosSomados" style={{display: 'flex', flexDirection: 'column', gap: '8px'}}></div>
+  </div>
+
+</div>
 
         
-        <div id="tab-producao" style={{...styles.pageContent, display: activeTab === "tab-producao" ? "block" : "none"}}>
-          <div style={styles.card}>
-            <div style={styles.cardHeader}>
-              <div style={styles.headerIcon}><Calculator size={18} /></div>
-              <h3>Planejamento de Produção</h3>
-            </div>
-            <p style={styles.cardSubtitle}>Defina as quantidades para calcular os materiais necessários automaticamente.</p>
-            
-            <div style={styles.producaoGrid}>
-              {craftList.map((item) => (
-                <div key={item.id} style={styles.producaoItem}>
-                  <div style={{flex: 1}}>
-                    <div style={styles.producaoItemTitle}>{item.name}</div>
-                    <div style={styles.producaoItemMeta}>Unidade base: {item.unit || 'un'}</div>
-                  </div>
-                  
-                  <input 
-                    type="number" 
-                    placeholder="0"
-                    value={producaoQtds[item.id] || ""} 
-                    onChange={(e) => handleQtdChange(item.id, e.target.value)}
-                    style={styles.producaoInput} 
-                  />
 
-                  <button onClick={() => window.app.removerReceita(item.id)} style={styles.btnActionDelete}>
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <button 
-              style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '24px', width: '100%'}} 
-              onClick={() => window.app.calcularMateriais(craftList, producaoQtds)}
-            >
-              <Calculator size={18} /> Calcular Totais de Coleta
-            </button>
-          </div>
-
-          <div id="materiaisResultado" style={styles.resultCard}>
-            <div style={styles.cardHeader}>
-              <div style={{...styles.headerIcon, background: 'rgba(0,255,144,0.1)', color: '#00ff90'}}><Package size={18} /></div>
-              <h3 style={{color: '#00ff90'}}>Lista de Materiais</h3>
-            </div>
-            <div id="listaInsumosSomados" style={styles.resultList}></div>
-          </div>
-        </div>
 
 <div id="tab-equipe" style={{...styles.pageContent, display: activeTab === "tab-equipe" ? "block" : "none"}}>
   
@@ -1978,14 +1982,29 @@ const styles = {
     display: 'grid',
     gap: '12px'
   },
+  gridResponsive: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+    gap: '20px'
+  },
+
   producaoItem: {
     background: '#161922',
     padding: '16px 20px',
     borderRadius: '12px',
     display: 'flex',
+    flexWrap: 'wrap', 
     alignItems: 'center',
-    gap: '20px',
+    gap: '15px',
     border: '1px solid #1c1f26'
+  },
+  
+
+  producaoItemActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    marginLeft: 'auto' 
   },
   producaoItemTitle: {
     color: '#fff',
