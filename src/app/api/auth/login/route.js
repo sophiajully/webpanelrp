@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     
     if (user.isOwner) {
       const agora = new Date();
-      if (agora > new Date(user.expires_at)) {
+      if (agora > new Date(user.expiresAt)) {
         return res.status(403).json({ error: "Sua licença expirou. Entre em contato com o suporte." });
       }
     }

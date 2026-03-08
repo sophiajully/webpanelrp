@@ -1,75 +1,123 @@
-import { NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
-import { LRUCache } from 'lru-cache';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 
+export async function POST(request) {
+  try {
+    const body = await request.json();
+    const { username, password, type, companyName, accessKey, selectedCompanyId } = body;
 
-const cache = new LRUCache({
-  max: 10000,
-  ttl: 60 * 1000, 
-});
-
-export async function middleware(req) {
-  const { pathname } = req.nextUrl;
-
-  
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-
-  let identifier;
-  let limit;
-
-  if (token?.sub) {
-    
-    identifier = `user:${token.sub}`;
-    limit = 60; 
-  } else {
-    
-    const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0] || '127.0.0.1';
-    identifier = `ip:${ip}`;
-    
-    
-    if (pathname.includes('/api/auth/signup') || pathname.includes('/api/auth/callback')) {
-      limit = 5; 
-    } else {
-      limit = 20; 
+    // 1. Validação básica de campos
+    if (!username || !password || !type) {
+      return NextResponse.json({ error: "Identificação e senha são obrigatórios." }, { status: 400 });
     }
-  }
 
-  
-  const currentUsage = cache.get(identifier) || 0;
+    // 2. Verificar se o cidadão já existe
+    const existingUser = await prisma.user.findUnique({ where: { username } });
+    if (existingUser) {
+      return NextResponse.json({ error: "Este nome de cidadão já consta nos registros." }, { status: 400 });
+    }
 
-  if (currentUsage >= limit) {
-    return new NextResponse(
-      JSON.stringify({ 
-        error: "Muitas requisições", 
-        message: "Limite excedido. Tente novamente em 1 minuto.",
-        type: token ? "USER_LIMIT" : "IP_LIMIT"
-      }),
-      { 
-        status: 429, 
-        headers: { 'Content-Type': 'application/json' } 
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // --- FLUXO PARA PROPRIETÁRIOS (FUNDAÇÃO DE EMPRESA) ---
+    if (type === 'owner') {
+      if (!companyName || !accessKey) {
+        return NextResponse.json({ error: "Nome da empresa e Chave de Acesso são necessários." }, { status: 400 });
       }
-    );
+
+      // 3. Validar a AccessKey antes de qualquer coisa
+      const keyData = await prisma.accessKey.findUnique({
+        where: { key: accessKey }
+      });
+
+      if (!keyData) {
+        return NextResponse.json({ error: "Esta Chave de Acesso é inexistente ou inválida." }, { status: 400 });
+      }
+
+      if (keyData.used) {
+        return NextResponse.json({ error: "Esta Chave de Acesso já foi utilizada por outro cidadão." }, { status: 400 });
+      }
+
+      // 4. Iniciar Transação
+      await prisma.$transaction(async (tx) => {
+        
+        // A. Marcar a chave como usada para evitar race conditions
+        await tx.accessKey.update({
+          where: { id: keyData.id },
+          data: { 
+            used: true,
+            usedBy: username
+          }
+        });
+
+        // B. Calcular data de expiração baseada nos dias da chave
+        const expirationDate = new Date();
+        expirationDate.setDate(expirationDate.getDate() + keyData.days);
+
+        // C. Criar o Usuário
+        const user = await tx.user.create({
+          data: {
+            username,
+            password: hashedPassword,
+            accessKey: accessKey,
+            expiresAt: expirationDate,
+          },
+        });
+
+        // D. Criar a Empresa e a Role de Dono
+        const company = await tx.company.create({
+          data: {
+            name: companyName.toUpperCase(),
+            ownerId: user.id,
+            roles: {
+              create: {
+                name: 'Dono',
+                isOwner: true,
+                canAdmin: true,
+                canCraft: true,
+                canVendas: true,
+                canLogs: true,
+              }
+            }
+          },
+          include: { roles: true }
+        });
+
+        // E. Vincular usuário à empresa e ao cargo
+        await tx.user.update({
+          where: { id: user.id },
+          data: {
+            companyId: company.id,
+            roleId: company.roles[0].id
+          }
+        });
+      });
+
+      return NextResponse.json({ message: "Sua empresa foi fundada com sucesso!" }, { status: 201 });
+    }
+
+    // --- FLUXO PARA TRABALHADORES (ALISTAMENTO) ---
+    if (type === 'employee') {
+      if (!selectedCompanyId) {
+        return NextResponse.json({ error: "Selecione uma empresa para se alistar." }, { status: 400 });
+      }
+
+      await prisma.user.create({
+        data: {
+          username,
+          password: hashedPassword,
+          companyId: selectedCompanyId,
+        }
+      });
+
+      return NextResponse.json({ message: "Alistamento concluído!" }, { status: 201 });
+    }
+
+    return NextResponse.json({ error: "Função inválida." }, { status: 400 });
+
+  } catch (error) {
+    console.error("ERRO_SIGNUP:", error);
+    return NextResponse.json({ error: "Erro interno no cartório da fronteira." }, { status: 500 });
   }
-
-  
-  cache.set(identifier, currentUsage + 1);
-
-  
-  const response = NextResponse.next();
-  
-  
-  response.headers.set('X-RateLimit-Limit', limit.toString());
-  response.headers.set('X-RateLimit-Remaining', (limit - currentUsage - 1).toString());
-
-  return response;
 }
-
-export const config = {
-  runtime: 'nodejs', 
-  matcher: [
-    /*
-     * Aplica em todas as rotas de API e páginas, removendo arquivos estáticos
-     */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
-  ],
-};
