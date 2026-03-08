@@ -44,7 +44,7 @@ export default function Home() {
   const [teamList, setTeamList] = useState([]);
   const [roleList, setRoleList] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
+  const [loadingPombo, setLoadingPombo] = useState(false)
 
   const [showCompanySelector, setShowCompanySelector] = useState(false);
   const [keyList, setKeyList] = useState([]);
@@ -721,15 +721,16 @@ if (status === "authenticated" && !session?.user?.companyId) {
       <div style={{...styles.navItem, ...(activeTab === "tab-avisos" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-avisos", "Avisos"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
           <Bell size={18} /> Avisos
         </div>
+        <div style={{...styles.navItem, ...(activeTab === "tab-chat" ? styles.navItemActive : {})}} 
+     onClick={() => showTab("tab-chat", "Chat da Fazenda")}>
+  <MessageSquare size={18} /> Chat Interno
+</div>
       {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
         <div style={{...styles.navItem, ...(activeTab === "tab-vendas" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-vendas", "Nova Encomenda"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
           <ShoppingCart size={18} /> Nova Encomenda
         </div>
       )}
-      <div style={{...styles.navItem, ...(activeTab === "tab-chat" ? styles.navItemActive : {})}} 
-     onClick={() => showTab("tab-chat", "Chat da Fazenda")}>
-  <MessageSquare size={18} /> Chat Interno
-</div>
+      
       {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
         <div style={{...styles.navItem, ...(activeTab === "tab-pedidos" ? styles.navItemActive : {})}} onClick={() => { showTab("tab-pedidos", "Pedidos"); if(window.innerWidth < 768) setIsSidebarOpen(false); }}>
           <ClipboardList size={18} /> Histórico de Pedidos
