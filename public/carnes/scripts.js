@@ -83,7 +83,6 @@ window.app = {
 
         try {
             await this.apiFetch('/api/config', 'PATCH', novaConfig);
-            alert("Configurações salvas!");
             if (window.toggleModal) window.toggleModal(false);
             return novaConfig; 
         } catch (err) {

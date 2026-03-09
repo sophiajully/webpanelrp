@@ -1649,7 +1649,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
                 <h3>Gerador de Licenças</h3>
               </div>
               <div style={styles.masterActionRow}>
-                <div style={{flex: 1}}>
+                <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
                   <label style={styles.labelInput}>Validade (Dias)</label>
                   <input 
                     type="number" 
@@ -1723,13 +1723,15 @@ if (status === "authenticated" && !session?.user?.companyId) {
               </div>
             </div>
 
-              <button style={{...styles.baseButton, ...styles.buttonPrimary, flex: 1}} onClick={handleSalvarConfig} disabled={session?.user.isOwner !== true}>
+              <div style={{display: 'flex', flexDirection: 'row', gap: '15px'}}>
+                <button style={{...styles.baseButton, ...styles.buttonPrimary, flex: 1}} onClick={handleSalvarConfig} disabled={session?.user.isOwner !== true}>
                 Salvar Alterações
               </button>
               <button style={{...styles.baseButton, ...styles.buttonOutline, flex: 1}} onClick={() => setIsModalConfigOpen(false)}>
                 Cancelar
               </button>
-            </div>
+                </div>
+ </div>
           </div>
         </div>
 )}
@@ -2105,7 +2107,8 @@ const styles = {
   inputWrapper: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px'
+    gap: '8px',
+    borderRadius: '5px'
   },
   baseInput: {
     background: '#161922',
