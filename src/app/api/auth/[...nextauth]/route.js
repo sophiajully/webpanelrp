@@ -34,7 +34,8 @@ export const authOptions = {
           pombo: user.pombo,
           companyName: user.company?.name,
           colorPrimary: user.company?.colorPrimary,
-          colorAccent: user.company?.colorAccent
+          colorAccent: user.company?.colorAccent,
+          company: user.company
         };
       }
     })
@@ -51,6 +52,7 @@ export const authOptions = {
         token.colorPrimary = user.colorPrimary;
         token.colorAccent = user.colorAccent;
         token.pombo = user.pombo
+        token.company = user.company
       }
 
       
@@ -73,6 +75,7 @@ export const authOptions = {
           token.colorPrimary = dbUser.company?.colorPrimary;
           token.colorAccent = dbUser.company?.colorAccent;
           token.isOwner = dbUser.role?.isOwner || false;
+          token.company = dbUser.company
         }
       }
 
@@ -89,6 +92,7 @@ export const authOptions = {
         session.user.colorPrimary = token.colorPrimary;
         session.user.colorAccent = token.colorAccent;
         session.user.pombo = token.pombo;
+        session.user.company = token.company
       }
       return session;
     }

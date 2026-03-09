@@ -220,21 +220,23 @@ useEffect(() => {
     setProducaoQtds(prev => ({ ...prev, [id]: valor }));
   };
 
-  const handleSalvarConfig = async () => {
-    setIsModalConfigOpen(false);
-    const novosDados = await window.app.salvarConfig(session?.user?.companyId);
-
-    if (novosDados && update) {
-      await update({
-        ...session,
-        user: {
-          ...session.user,
-          colorPrimary: novosDados.colorPrimary,
-          colorAccent: novosDados.colorAccent,
-          companyName: novosDados.name
-        }
-      });
-
+ const handleSalvarConfig = async () => {
+  setIsModalConfigOpen(false);
+  const novosDados = await window.app.salvarConfig(session?.user?.companyId);
+  
+  if (novosDados && update) {
+    await update({
+      ...session,
+      user: {
+        ...session.user,
+        colorPrimary: novosDados.colorPrimary,
+        colorAccent: novosDados.colorAccent,
+        companyName: novosDados.name,
+        // Atualizando os novos campos na sessão
+        enableHireRequest: novosDados.enableHireRequest,
+        enableMarket: novosDados.enableMarket
+      }
+    });
       if (status === "authenticated") {
 
         const corPrimaria = session?.user?.colorPrimary || "#d4a91c";
@@ -245,6 +247,7 @@ useEffect(() => {
         root.style.setProperty('--cor-destaque', corDestaque);
         root.style.setProperty('--cor-primaria-bg', `${corPrimaria}1A`); 
         root.style.setProperty('--cor-destaque-bg', `${corDestaque}1A`);
+      
       }
     }
   };
@@ -385,7 +388,6 @@ useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
     if (status === "authenticated") {
       if(!session.user.pombo) {
-        console.log(session.user)
         setShowPerfilModal(true)
         alert("⚠️ Você precisa configurar seu Pombo para continuar!");
       }
@@ -520,7 +522,7 @@ useEffect(() => {
   );
 }
 
-const webhookUrl = `https://tysaiw.com/api/webhook/${session.user.companyId}`;
+const webhookUrl = `https://tysaiw.com/api/webhook/${session?.user?.companyId}`;
 
 
 if (status === "authenticated" && !session?.user?.companyId) {
@@ -1157,7 +1159,7 @@ if (status === "authenticated" && !session?.user?.companyId) {
         <div style={{display: 'flex', flexDirection: 'column', marginLeft: 'auto'}}>
            <span style={{fontSize: '0.65rem', color: '#4b5563', fontWeight: 'bold', textTransform: 'uppercase'}}>URL do Webhook</span>
            <code style={styles.webhookLink}>
-             {webhookUrl.replace(session.user.companyId, '••••••••••••')}
+             {webhookUrl.replace(session?.user?.companyId, '••••••••••••')}
            </code>
         </div>
         <button 
@@ -1690,49 +1692,124 @@ if (status === "authenticated" && !session?.user?.companyId) {
 {/* MODAL DE CONFIGURAÇÃO USANDO REACT STATE */}
 {isModalConfigOpen && (
   <div style={styles.modalOverlay}>
-          <div style={styles.modalBody}>
-          <div style={styles.cardHeader}>
-            <div style={styles.headerIcon}><Settings size={18} /></div>
-            <h3>Preferências do Sistema</h3>
+    <div style={styles.modalBody}>
+      <div style={styles.cardHeader}>
+        <div style={styles.headerIcon}><Settings size={18} /></div>
+        <h3>Preferências do Sistema</h3>
+      </div>
+      
+      <div style={styles.modalForm}>
+        {/* NOME DA EMPRESA */}
+        <div style={styles.inputWrapper}>
+          <label style={styles.labelInput}>Nome da Empresa</label>
+          <input 
+            type="text" 
+            id="nomeEmpresaInput" 
+            style={styles.baseInput} 
+            defaultValue={session?.user?.companyName || ""} 
+            disabled={session?.user.isOwner !== true} 
+          />
+        </div>
+        
+        {/* WEBHOOK VENDAS */}
+        <div style={styles.inputWrapper}>
+          <label style={styles.labelInput}>Webhook Encomendas</label>
+          <input 
+            type="text" 
+            id="webhookVendasInput" 
+            style={styles.baseInput} 
+            defaultValue={session?.user?.company?.webhookVendas || ""} 
+            disabled={session?.user.isOwner !== true} 
+          />
+        </div>
+
+        {/* WEBHOOK LOGS */}
+        <div style={styles.inputWrapper}>
+          <label style={styles.labelInput}>Webhook Logs:</label>
+          <input 
+            type="text" 
+            id="webhookLogsInput" 
+            placeholder="URL para registros internos" 
+            style={styles.baseInput} 
+            defaultValue={session?.user?.company?.webhookLogs || ""} 
+            disabled={session?.user.isOwner !== true} 
+          />
+        </div>
+
+        {/* CORES */}
+        <div style={styles.grid2Cols}>
+          <div style={styles.inputWrapper}>
+            <label style={styles.labelInput}>Cor Principal</label>
+            <input 
+              type="color" 
+              id="colorPrimary" 
+              defaultValue={session?.user?.colorPrimary || "#d4a91c"} 
+              style={styles.colorPicker} 
+              disabled={session?.user.isOwner !== true} 
+            />
           </div>
-          
-          <div style={styles.modalForm}>
-            <div style={styles.inputWrapper}>
-              <label style={styles.labelInput}>Nome da Empresa</label>
-              <input type="text" id="nomeEmpresaInput" style={styles.baseInput} disabled={session?.user.isOwner !== true} />
-            </div>
-            
-            <div style={styles.inputWrapper}>
-              <label style={styles.labelInput}>Webhook Encomendas</label>
-              <input type="text" id="webhookVendasInput" style={styles.baseInput} disabled={session?.user.isOwner !== true} />
-            </div>
-            <div>
-              <label style={styles.labelInput}>Webhook Logs:</label>
-              <input type="text" id="webhookLogsInput" placeholder="URL para registros internos" style={styles.baseInput} disabled={session?.user.isOwner !== true} />
-            </div>
-
-            <div style={styles.grid2Cols}>
-              <div style={styles.inputWrapper}>
-                <label style={styles.labelInput}>Cor Principal</label>
-                <input type="color" id="colorPrimary" defaultValue={session?.user?.colorPrimary || "#d4a91c"} style={styles.colorPicker} disabled={session?.user.isOwner !== true} />
-              </div>
-              <div style={styles.inputWrapper}>
-                <label style={styles.labelInput}>Cor Accent</label>
-                <input type="color" id="colorAccent" style={styles.colorPicker} disabled={session?.user.isOwner !== true} />
-              </div>
-            </div>
-
-              <div style={{display: 'flex', flexDirection: 'row', gap: '15px'}}>
-                <button style={{...styles.baseButton, ...styles.buttonPrimary, flex: 1}} onClick={handleSalvarConfig} disabled={session?.user.isOwner !== true}>
-                Salvar Alterações
-              </button>
-              <button style={{...styles.baseButton, ...styles.buttonOutline, flex: 1}} onClick={() => setIsModalConfigOpen(false)}>
-                Cancelar
-              </button>
-                </div>
- </div>
+          <div style={styles.inputWrapper}>
+            <label style={styles.labelInput}>Cor Accent</label>
+            <input 
+              type="color" 
+              id="colorAccent" 
+              defaultValue={session?.user?.colorAccent || "#ff4c4c"} 
+              style={styles.colorPicker} 
+              disabled={session?.user.isOwner !== true} 
+            />
           </div>
         </div>
+{/* CONFIGURAÇÕES DE STATUS */}
+<div style={{...styles.grid2Cols, gap: '20px', marginTop: '10px'}}>
+  <div style={styles.switchWrapper}>
+    <label style={styles.labelInput}>Recrutamento</label>
+    <div style={styles.switchContainer}>
+      <input 
+        type="checkbox" 
+        id="enableHireRequestInput" 
+        defaultChecked={session?.user?.enableHireRequest} 
+        style={styles.checkboxHidden}
+      />
+      <label htmlFor="enableHireRequestInput" style={styles.switchLabel}>
+        Permitir pedidos de entrada
+      </label>
+    </div>
+  </div>
+
+  <div style={styles.switchWrapper}>
+    <label style={styles.labelInput}>Mercadão</label>
+    <div style={styles.switchContainer}>
+      <input 
+        type="checkbox" 
+        id="enableMarketInput" 
+        defaultChecked={session?.user?.enableMarket} 
+        style={styles.checkboxHidden}
+      />
+      <label htmlFor="enableMarketInput" style={styles.switchLabel}>
+        Aparecer no Mercadão
+      </label>
+    </div>
+  </div>
+</div>
+        {/* BOTÕES */}
+        <div style={{display: 'flex', flexDirection: 'row', gap: '15px', marginTop: '15px'}}>
+          <button 
+            style={{...styles.baseButton, ...styles.buttonPrimary, flex: 1}} 
+            onClick={handleSalvarConfig} 
+            disabled={session?.user.isOwner !== true}
+          >
+            Salvar Alterações
+          </button>
+          <button 
+            style={{...styles.baseButton, ...styles.buttonOutline, flex: 1}} 
+            onClick={() => setIsModalConfigOpen(false)}
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 )}
       
       <div className="modal-overlay" id="modalSettings" style={{ display: 'none' }}>
@@ -2013,6 +2090,32 @@ const styles = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap'
+  },
+  // ... seus estilos atuais
+  switchContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    background: 'rgba(255, 255, 255, 0.05)',
+    padding: '8px 12px',
+    borderRadius: '8px',
+    border: '1px solid #333',
+    marginTop: '5px'
+  },
+  switchLabel: {
+    fontSize: '0.85rem',
+    color: '#ccc',
+    cursor: 'pointer',
+    marginLeft: '8px'
+  },
+  checkboxHidden: {
+    cursor: 'pointer',
+    width: '18px',
+    height: '18px',
+    accentColor: 'var(--cor-primaria)' // Usa a cor que o usuário escolheu
+  },
+  switchWrapper: {
+    display: 'flex',
+    flexDirection: 'column'
   },
   btnCopy: {
     background: 'transparent',

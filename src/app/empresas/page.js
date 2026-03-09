@@ -23,9 +23,10 @@ export default function SelecaoEmpresas() {
   const carregarEmpresas = useCallback(async (page = 1, search = "") => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/companies?page=${page}&limit=15&search=${search}`);
+      const res = await fetch(`/api/companies?page=${page}&limit=15&search=${search}&empresas=true`);
       const data = await res.json();
-      setEmpresas(data.companies || []);
+      const empresas = data.companies?.filter(e => e.enableHireRequest)
+      setEmpresas(empresas || []);
       setMeta(data.meta || { page: 1, totalPages: 1 });
     } catch (err) {
       console.error("Erro ao carregar mercado:", err);

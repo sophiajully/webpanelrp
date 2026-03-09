@@ -5,7 +5,9 @@ window.app = {
         webhookLogs: "",
         nomeEmpresa: "SafraLog ERP",
         colorPrimary: "#8b0000",
-        colorAccent: "#ff4c4c"
+        colorAccent: "#ff4c4c",
+        enableMarket: true,
+        enableHireRequest: true
     },
     companyId: null,
     encomendaAtual: [],
@@ -58,7 +60,7 @@ window.app = {
                 this.config = { ...this.config, ...dbConfig, nomeEmpresa: dbConfig.name || "COMPANY_NAME" };
             }
         } catch (err) {
-            console.warn("Falha na API de config, usando LocalStorage.", err);
+            console.warn("Falha na API, usando LocalStorage.", err);
             const saved = JSON.parse(localStorage.getItem("painel_config") || "{}");
             this.config = { ...this.config, ...saved };
         }
@@ -68,6 +70,13 @@ window.app = {
         this.setVal("nomeEmpresaInput", this.config.nomeEmpresa);
         this.setVal("colorPrimary", this.config.colorPrimary);
         this.setVal("colorAccent", this.config.colorAccent);
+        
+        // Ajuste para Checkboxes
+        const hireInput = this.getEl("enableHireRequestInput");
+        const marketInput = this.getEl("enableMarketInput");
+        if (hireInput) hireInput.checked = this.config.enableHireRequest;
+        if (marketInput) marketInput.checked = this.config.enableMarket;
+
         this.aplicarTema();
     },
 
@@ -78,18 +87,22 @@ window.app = {
             webhookLogs: this.getVal("webhookLogsInput"),
             name: this.getVal("nomeEmpresaInput"),
             colorPrimary: this.getVal("colorPrimary"),
-            colorAccent: this.getVal("colorAccent")
+            colorAccent: this.getVal("colorAccent"),
+            // Capturando o estado Booleano (true/false)
+            enableHireRequest: this.getEl("enableHireRequestInput")?.checked,
+            enableMarket: this.getEl("enableMarketInput")?.checked
         };
 
         try {
             await this.apiFetch('/api/config', 'PATCH', novaConfig);
-            if (window.toggleModal) window.toggleModal(false);
+            alert("Configurações salvas!");
             return novaConfig; 
         } catch (err) {
             alert(`Erro ao salvar: ${err.message}`);
             return null;
         }
     },
+
 
     aplicarTema() {
         const root = document.documentElement;

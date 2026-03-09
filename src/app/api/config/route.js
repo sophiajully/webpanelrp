@@ -18,8 +18,7 @@ export async function PATCH(req) {
     }
 
     const body = await req.json();
-    const { webhookVendas, webhookLogs, name, colorPrimary, colorAccent } = body;
-
+    const { webhookVendas, webhookLogs, name, colorPrimary, colorAccent, enableHireRequest, enableMarket } = body;
     const updated = await prisma.company.update({
       where: { id: token.companyId },
       data: { 
@@ -27,7 +26,9 @@ export async function PATCH(req) {
         webhookLogs, 
         name, 
         colorPrimary, 
-        colorAccent 
+        colorAccent,
+        enableHireRequest: enableHireRequest,
+        enableMarket: enableMarket
       }
     });
 

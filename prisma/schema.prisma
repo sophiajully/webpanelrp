@@ -56,7 +56,9 @@ model Company {
   colorPrimary  String   @default("#8b0000")
   colorAccent   String   @default("#ff4c4c")
 
-  // Relacionamentos com Cascade
+  enableMarket  Boolean  @default(true)
+  enableHireRequest Boolean @default(true)
+
   users         User[]        @relation("CompanyMembers")
   roles         Role[]
   hireRequests  HireRequest[]

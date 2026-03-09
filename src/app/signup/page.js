@@ -34,7 +34,7 @@ export default function Signup() {
     if (type === 'employee') {
       fetch('/api/companies?all=true')
         .then(res => res.json())
-        .then(data => setCompanies(Array.isArray(data) ? data : data.companies || []))
+        .then(data => setCompanies(Array.isArray(data) ? data.filter(e => e.enableHireRequest) : data.companies.filter(e => e.enableHireRequest) || []))
         .catch(() => setCompanies([]));
     }
   }, [type]);

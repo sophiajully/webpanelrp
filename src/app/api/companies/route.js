@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Search } from "lucide-react";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
@@ -9,7 +10,7 @@ export async function GET(request) {
   
   // Se 'all' for true, mostramos TUDO. 
   // Se não for passado (ou for false), mantemos o filtro de ter crafts.
-  const showAll = searchParams.get("all") === "true";
+  const showAll = searchParams.get("all") === "true" || searchParams.get('empresas') === 'true'
   
   const skip = (page - 1) * limit;
 
@@ -19,7 +20,7 @@ export async function GET(request) {
       
       // Lógica Opcional: 
       // Se showAll for false, aplica o filtro de 'crafts: some'
-      ...(!showAll ? { crafts: { some: {} } } : {})
+      ...(!showAll ? { crafts: { some: {} }, enableMarket: true } : {})
     };
 
     const [companies, total] = await Promise.all([
@@ -31,6 +32,8 @@ export async function GET(request) {
           id: true, 
           name: true, 
           colorPrimary: true,
+          enableHireRequest: true,
+          enableMarket: true,
           _count: { 
             select: { 
               users: true, 
