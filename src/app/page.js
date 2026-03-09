@@ -885,10 +885,9 @@ if (status === "authenticated" && !session?.user?.companyId) {
         />
 
         <button 
-          className="primary" 
           onClick={salvarConfigPombo}
           disabled={loadingPombo}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+          style={{ ...buttonPrimary, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '5px' }}
         >
           {loadingPombo ? "Salvando..." : <><CheckCircle size={18} /> Salvar Alterações</>}
         </button>
@@ -2322,7 +2321,11 @@ const styles = {
     letterSpacing: '1px',
     fontFamily: 'serif',
   },
-  
+  masterActionRow: {
+    display: 'flex',
+    gap: '5px',
+    flexDirection: 'column'
+  },
   keyCode: {
     fontFamily: 'monospace',
     color: 'var(--cor-primaria, #d4a91c)',
