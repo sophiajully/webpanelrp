@@ -50,7 +50,7 @@ export default function Home() {
   const [roleList, setRoleList] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [loadingPombo, setLoadingPombo] = useState(false)
-
+  const [isModalConfigOpen, setIsModalConfigOpen] = useState(false);
   const [showCompanySelector, setShowCompanySelector] = useState(false);
   const [keyList, setKeyList] = useState([]);
   const [showPerfilModal, setShowPerfilModal] = useState(false);
@@ -221,6 +221,7 @@ useEffect(() => {
   };
 
   const handleSalvarConfig = async () => {
+    setIsModalConfigOpen(false);
     const novosDados = await window.app.salvarConfig(session?.user?.companyId);
 
     if (novosDados && update) {
@@ -837,9 +838,9 @@ if (status === "authenticated" && !session?.user?.companyId) {
             <span style={styles.breadcrumb}>Dashboard / {activeTab.replace("tab-", "")}</span>
             <h2 id="page-title" style={styles.pageTitle}>Pedidos</h2>
           </div>
-          <button style={styles.btnSettings} onClick={() => window.toggleModal(true)}>
-            <Settings size={20} />
-          </button>
+          <button onClick={() => setIsModalConfigOpen(true)} style={styles.btnSettings}>
+  <Settings size={18} />
+</button>
         </header>
 
 {showPerfilModal && (
@@ -1687,10 +1688,10 @@ if (status === "authenticated" && !session?.user?.companyId) {
           </div>
         )}
       </main>
-
-      
-      <div className="modal-overlay" id="modalSettings" style={{ display: 'none' }}>
-        <div style={styles.modalBody}>
+{/* MODAL DE CONFIGURAÇÃO USANDO REACT STATE */}
+{isModalConfigOpen && (
+  <div style={styles.modalOverlay}>
+          <div style={styles.modalBody}>
           <div style={styles.cardHeader}>
             <div style={styles.headerIcon}><Settings size={18} /></div>
             <h3>Preferências do Sistema</h3>
@@ -1722,16 +1723,19 @@ if (status === "authenticated" && !session?.user?.companyId) {
               </div>
             </div>
 
-            <div style={styles.modalActions}>
               <button style={{...styles.baseButton, ...styles.buttonPrimary, flex: 1}} onClick={handleSalvarConfig} disabled={session?.user.isOwner !== true}>
                 Salvar Alterações
               </button>
-              <button style={{...styles.baseButton, ...styles.buttonOutline, flex: 1}} onClick={() => toggleModal(false)}>
+              <button style={{...styles.baseButton, ...styles.buttonOutline, flex: 1}} onClick={() => setIsModalConfigOpen(false)}>
                 Cancelar
               </button>
             </div>
           </div>
         </div>
+)}
+      
+      <div className="modal-overlay" id="modalSettings" style={{ display: 'none' }}>
+ 
       </div>
       {showNovaEmpresaModal && (
   <div style={{
