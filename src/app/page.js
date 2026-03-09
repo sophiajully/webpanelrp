@@ -8,8 +8,10 @@ import {
   ShoppingCart, 
   ClipboardList,
   MessageSquare,
-  Hammer, 
+  Hammer,
+  Check, 
   Beef,
+  Copy,
   FileText,
   X,
   Shield, 
@@ -33,6 +35,7 @@ import {
   Search,
   History
 } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
   const { data: session, status, update } = useSession();
@@ -65,6 +68,13 @@ const [announcements, setAnnouncements] = useState([]);
 const [newNotice, setNewNotice] = useState({ title: "", content: "", priority: false });
 const [isModalReceitaOpen, setIsModalReceitaOpen] = useState(false);
 const [isModalVendaOpen, setIsModalVendaOpen] = useState(false);
+const [copied, setCopied] = useState(false);
+
+const handleCopy = () => {
+  navigator.clipboard.writeText(webhookUrl);
+  setCopied(true);
+  setTimeout(() => setCopied(false), 2000); // Reseta o ícone após 2 segundos
+};
 const fetchAnnouncements = useCallback(async () => {
   try {
     const res = await fetch('/api/announcements');
@@ -509,6 +519,7 @@ useEffect(() => {
   );
 }
 
+const webhookUrl = `https://tysaiw.com/api/webhook/${session.user.companyId}`;
 
 
 if (status === "authenticated" && !session?.user?.companyId) {
@@ -1135,11 +1146,33 @@ if (status === "authenticated" && !session?.user?.companyId) {
   </div>
 
   
-  <div style={{...styles.card, flex: 1, minHeight: '400px'}}>
-    <div style={styles.cardHeader}>
-      <div style={styles.headerIcon}><History size={18} /></div>
-      <h3>Histórico de Atividades</h3>
+  <div style={{...styles.card, flex: 1, minHeight: '400px', display: 'flex', flexDirection: 'column'}}>
+  <div style={styles.cardHeader}>
+    <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+      <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+        <div style={styles.headerIcon}><History size={18} /></div>
+        <h3 style={{margin: 0}}>Histórico de Atividades</h3>
+        {!isMobile && (
+          <div style={{...styles.webhookContainer, marginLeft: 'auto'}}>
+        <div style={{display: 'flex', flexDirection: 'column', marginLeft: 'auto'}}>
+           <span style={{fontSize: '0.65rem', color: '#4b5563', fontWeight: 'bold', textTransform: 'uppercase'}}>URL do Webhook</span>
+           <code style={styles.webhookLink}>
+             {webhookUrl.replace(session.user.companyId, '••••••••••••')}
+           </code>
+        </div>
+        <button 
+          onClick={handleCopy} 
+          style={{...styles.btnCopy, backgroundColor: copied ? 'rgba(0, 255, 144, 0.1)' : 'transparent'}}
+          title="Copiar Webhook"
+        >
+          {copied ? <Check size={16} color="#00ff90" /> : <Copy size={16} />}
+        </button>
+      </div>
+        )}
+      </div>
+      
     </div>
+  </div>
 
     <div style={{overflowX: 'auto', marginTop: '20px'}}>
       <table style={{width: '100%', borderCollapse: 'collapse', color: '#fff'}}>
@@ -1941,7 +1974,53 @@ const styles = {
     transition: '0.2s'
   },
 
-  
+
+  responsiveTableContainer: {
+    width: '100%',
+    overflowX: 'auto', // Scroll horizontal apenas na tabela
+    marginTop: '20px',
+    WebkitOverflowScrolling: 'touch', // Scroll suave no iOS
+  },
+  webhookContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%', 
+    maxWidth: '450px',
+    flexWrap: 'wrap', // Permite que o botão desça se não houver espaço,
+    background: '#07080a', // Mais escuro que o card
+    border: '1px solid #1c1f26',
+    borderRadius: '10px',
+    padding: '8px 12px',
+    gap: '12px',
+    marginTop: '10px',
+    width: 'fit-content'
+  },
+  webhookLink: {
+    fontFamily: 'monospace',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    maxWidth: '220px', // Ajuste conforme necessário
+    fontSize: '0.85rem',
+    color: '#9ca3af',
+    userSelect: 'all',
+    maxWidth: '300px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
+  },
+  btnCopy: {
+    background: 'transparent',
+    border: 'none',
+    color: 'var(--cor-primaria, #d4a91c)',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '4px',
+    borderRadius: '4px',
+    transition: '0.2s',
+  },
   mainContent: {
     flex: 1,
     padding: '40px',

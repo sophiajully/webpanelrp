@@ -74,7 +74,7 @@ export default function FornecedorPage({ params }) {
     setEnviandoPedido(true);
     const total = carrinho.reduce((acc, item) => acc + (Number(item.preco) * item.qtd), 0);
     const itensTexto = carrinho.map(i => `🔸 **${i.nome}** (x${i.qtd}) - $${(Number(i.preco) * i.qtd).toFixed(2)}`).join('\n');
-
+    
     try {
       if (empresa.webhookVendas) {
         await fetch('/api/queue', {
@@ -89,6 +89,7 @@ export default function FornecedorPage({ params }) {
                 color: 0xd4a91c,
                 fields: [
                   { name: "👤 Cliente", value: session?.user?.name || "Desconhecido", inline: true },
+                  { name: "👤 Empresa/Fazenda", value: session?.user?.companyName || "Desconhecido", inline: true },
                   { name: "📫 Pombo", value: `${session?.user?.pombo || 'Não Informado'}`, inline: true }, 
                   { name: "💰 Valor total", value: `**$ ${total.toFixed(2)}**` },
                   { name: "📝 Itens", value: itensTexto },

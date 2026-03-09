@@ -9,13 +9,13 @@ export async function POST(request) {
 
     // 1. Validação básica de campos
     if (!username || !password || !type) {
-      return NextResponse.json({ error: "Identificação e senha são obrigatórios." }, { status: 400 });
+      return NextResponse.json({ error: "Nome ou Senha inválidos." }, { status: 400 });
     }
 
     // 2. Verificar se o cidadão já existe
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) {
-      return NextResponse.json({ error: "Este nome de cidadão já consta nos registros." }, { status: 400 });
+      return NextResponse.json({ error: "Nome ou Senha inválidos." }, { status: 400 });
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
