@@ -382,7 +382,7 @@ export function useAppData() {
       }
       document.body.setAttribute("data-company-id", session?.user?.companyId || "");
       const script = document.createElement("script");
-      script.src = "./carnes/scripts.js";
+      script.src = "./scripts.js";
       script.async = true;
       script.onload = () => { if (window.app) window.app.init(); };
       document.body.appendChild(script);
