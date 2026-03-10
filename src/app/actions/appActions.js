@@ -43,14 +43,17 @@ export async function submitServerAction(endpoint, method = 'GET', body = null) 
         const sessionCookie = cookieStore.get('next-auth.session-token') || cookieStore.get('__Secure-next-auth.session-token');
         const cookieHeader = sessionCookie ? `${sessionCookie.name}=${sessionCookie.value}` : '';
 
-        const options = {
-            method,
-            headers: {
-                'Content-Type': 'application/json',
-                'Cookie': cookieHeader // Envia apenas o necessário
-            },
-            cache: 'no-store',
-        };
+
+const allCookies = cookieStore.toString(); 
+
+const options = {
+    method,
+    headers: {
+        'Content-Type': 'application/json',
+        'Cookie': allCookies // Passa todos, incluindo o CSRF e o Secure Token
+    },
+    cache: 'no-store',
+};
 
         if (body && method !== 'GET') {
             options.body = JSON.stringify(body);
