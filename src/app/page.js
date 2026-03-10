@@ -1,7 +1,7 @@
 "use client";
 
 import { useAppData } from "@/app/hooks/useAppData"
-import { HomeStyles as styles } from "./styles/page";
+import { HomeStyles as styles } from "@/styles/page";
 
 
 import Sidebar from "@/app/components/index/Sidebar";
