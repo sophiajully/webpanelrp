@@ -7,7 +7,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const { username, password, roleId, companyId } = body;
-const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions);
 
   
   if (!session || session.user.name !== "admin") {
@@ -57,14 +57,17 @@ const session = await getServerSession(authOptions);
 
     
     const newUser = await prisma.user.create({
-      data: {
-        username,
-        password: hashedPassword,
-        companyId,
-        roleId: finalRoleId,
-        isOwner: false,
-      }
-    });
+  data: {
+    username,
+    password: hashedPassword,
+    role: {
+      connect: { id: finalRoleId }
+    },
+    company: {
+      connect: { id: companyId }
+    }
+  }
+});
 
     return NextResponse.json({ success: true, user: { id: newUser.id, username: newUser.username } });
 

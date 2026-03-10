@@ -4,6 +4,8 @@ import { useEffect, useState, use } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Package, Trash2, ShoppingCart } from "lucide-react";
+import Toast from "@/app/components/Toast";
+import ConfirmModal from "@/app/components/ConfirmModal";
 
 export default function FornecedorPage({ params }) {
   const { data: session } = useSession();
@@ -101,9 +103,9 @@ export default function FornecedorPage({ params }) {
           })
         });
       }
-      alert("Proposta enviada com sucesso!");
+      window.showToast("Proposta enviada com sucesso!", 'success')
       setCarrinho([]);
-      router.push('/mercadao');
+      //router.push('/mercadao');
     } catch (err) {
       alert("Erro ao enviar.");
     } finally {
@@ -209,6 +211,8 @@ export default function FornecedorPage({ params }) {
             </button>
           </div>
         </div>
+        <Toast />
+        <ConfirmModal />
       </main>
     </div>
   );

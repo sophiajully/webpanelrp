@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Store, ArrowLeft, Users, Package, ChevronLeft, ChevronRight } from "lucide-react";
+import Toast from "@/app/components/Toast";
+import ConfirmModal from "@/app/components/ConfirmModal";
 
 export default function MercadaoGeral() {
   const { data: session } = useSession();
@@ -150,6 +152,8 @@ export default function MercadaoGeral() {
             </div>
           )}
         </section>
+        <Toast />
+        <ConfirmModal />
       </main>
     </div>
   );

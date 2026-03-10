@@ -1,4 +1,4 @@
-import "./carnes/styles.css";
+import "./globals.css";
 import AuthProvider from "./components/AuthProvider";
 import ConsoleWarning from "./components/ConsoleWarning"; 
 

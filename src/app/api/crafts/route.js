@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { NextResponse } from "next/server";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function DELETE(req) {
   const session = await getServerSession(authOptions);
@@ -71,11 +73,24 @@ export async function POST(req) {
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-
   
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  // 1. Tenta pegar os crafts que você acabou de colocar na sessão/company
+  const craftsDaSessao = session.user.company?.crafts;
+
+  if (craftsDaSessao && craftsDaSessao.length > 0) {
+    console.log("🚀 Retornando crafts DIRETO da sessão");
+    return NextResponse.json(craftsDaSessao);
+  }
+
+  // 2. Fallback: Se por algum motivo a sessão não tiver os crafts, busca no banco
+  console.log("🔍 Sessão vazia, buscando crafts no Prisma...");
   const crafts = await prisma.craft.findMany({
-    where: { companyId: session.user.companyId }
+    where: { companyId: session.user.companyId },
+    orderBy: { name: 'asc' }
   });
   
   return NextResponse.json(crafts);

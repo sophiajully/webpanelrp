@@ -17,7 +17,13 @@ export const authOptions = {
 
         const user = await prisma.user.findUnique({
           where: { username: credentials.username },
-          include: { role: true, company: true } 
+          include: { 
+            role: true, 
+            company: {
+              include: { crafts: true }
+            } 
+          },
+
         });
 
         if (!user || !(await bcrypt.compare(credentials.password, user.password))) {
@@ -61,7 +67,9 @@ export const authOptions = {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id },
           include: { 
-            company: true, 
+            company: {
+              include: { crafts: true }
+            }, 
             role: true 
           }
         });

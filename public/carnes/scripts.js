@@ -23,17 +23,46 @@ window.app = {
     setVal: (id, val) => { const el = document.getElementById(id); if (el) el.value = val; },
     
     
-    async apiFetch(endpoint, method = 'GET', body = null) {
-        const options = { method, headers: { 'Content-Type': 'application/json' } };
-        if (body) options.body = JSON.stringify(body);
-        
-        const res = await fetch(endpoint, options);
-        const isJson = res.headers.get('content-type')?.includes('application/json');
-        const data = isJson ? await res.json() : null;
+ async apiFetch(endpoint, method = 'GET', body = null) {
+    // 1. Tenta usar a ponte das Server Actions (Next.js)
+    if (window.serverActions && window.serverActions.apiFetch) {
+        try {
+            const res = await window.serverActions.apiFetch(endpoint, method, body);
+            if (res && res.error) throw new Error(res.error);
+            return res;
+        } catch (err) {
+            console.error("Erro na Server Action:", err);
+            throw err;
+        }
+    }
 
-        if (!res.ok) throw new Error((data && data.error) || `Erro HTTP: ${res.status}`);
-        return data;
-    },
+    // 2. Fallback (Fetch Direto) - Melhorado para evitar o erro de JSON
+    const options = { 
+        method, 
+        headers: { 'Content-Type': 'application/json' } 
+    };
+    
+    if (body && method !== 'GET') {
+        options.body = JSON.stringify(body);
+    }
+
+    try {
+        const res = await fetch(endpoint, options);
+        
+        // Verifica se a resposta está vazia (status 204 No Content ou corpo vazio)
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            if (res.ok) return { success: true }; // Se deu certo mas não é JSON
+            const errorText = await res.text();
+            throw new Error(errorText || `Erro HTTP ${res.status}`);
+        }
+
+        return await res.json();
+    } catch (err) {
+        console.error("Erro no Fetch:", err);
+        throw new Error("Falha na comunicação: " + err.message);
+    }
+},
 
     
     init() {
@@ -95,10 +124,10 @@ window.app = {
 
         try {
             await this.apiFetch('/api/config', 'PATCH', novaConfig);
-            alert("Configurações salvas!");
+            window.showToast(`Configurações Salvas!`, 'success')
             return novaConfig; 
         } catch (err) {
-            alert(`Erro ao salvar: ${err.message}`);
+            window.showToast(`Erro`, 'error')
             return null;
         }
     },
@@ -241,7 +270,7 @@ window.app = {
         const unidade = this.getVal("unidades");
         const price = this.getVal("price");
         
-        if (!nome || !unidade || !price) return alert("Preencha os dados básicos!");
+        if (!nome || !unidade || !price) return window.showToast(`Preencha os dados básicos!`, 'error')
 
         const insumos = Array.from(document.querySelectorAll(".insumo-row")).map(row => ({
             nome: row.querySelector(".insumo-nome").value,
@@ -249,24 +278,30 @@ window.app = {
         })).filter(i => i.nome);
 
         try {
+            window.showToast(`Registrando...`, 'loading')
             await this.apiFetch('/api/crafts', 'POST', { name: nome, unit: unidade, insumos, price });
-            await this.registrarLog({ action: "RECEITA_CRIADA", category: "PRODUCAO", details: `O produto "${nome}" foi adicionado.` });
-            alert("Receita salva com sucesso!");
-            this.limparCamposCraft();
             this.carregarCrafts();
+            window.showToast(`Receita salva com sucesso!`, 'success')
+            await this.registrarLog({ action: "RECEITA_CRIADA", category: "PRODUCAO", details: `O produto "${nome}" foi adicionado.` });
+           
+            this.limparCamposCraft();
+            
         } catch (err) {
-            alert("Erro ao salvar receita: " + err.message);
+            window.showToast(`Erro ao salvar receita`, 'error')
         }
     },
 
     async removerReceita(id) {
-        if (!confirm("⚠️ Excluir permanentemente do banco de dados?")) return;
+        if (!await window.askConfirm("⚠️ Excluir permanentemente do banco de dados?")) return;
         try {
+            window.showToast(`Removendo...`, 'loading')
             await this.apiFetch(`/api/crafts?id=${id}`, 'DELETE');
-            await this.registrarLog({ action: "RECEITA_REMOVIDA", category: "PRODUCAO", details: `Uma receita (ID: ${id}) foi excluída.` });
             this.carregarCrafts();
+            await this.registrarLog({ action: "RECEITA_REMOVIDA", category: "PRODUCAO", details: `Uma receita (ID: ${id}) foi excluída.` });
+            
+            window.showToast(`Receita removida com sucesso`, 'success')
         } catch (err) {
-            alert("Erro ao deletar receita.");
+            window.showToast(`Erro ao deletar receita.`, 'error')
         }
     },
 
@@ -296,7 +331,7 @@ window.app = {
         const resumoCrafts = [];
 
         if (!craftList || !producaoQtds || Object.keys(producaoQtds).length === 0) {
-            return alert("Digite a quantidade desejada antes de calcular!");
+            return window.showToast(`Digite a quantidade desejada antes de calcular!`, 'error')
         }
 
         Object.entries(producaoQtds).forEach(([id, qtd]) => {
@@ -352,7 +387,7 @@ window.app = {
         const nome = this.getVal("produtoSelect");
         const qtd = parseInt(this.getVal("quantidadeItem"));
         
-        if (!nome || !qtd) return alert("Selecione o item e a quantidade!");
+        if (!nome || !qtd) return window.showToast(`Selecione a quantidade do Item`, "error")
 
         const produto = this.craftsCache.find(c => c.name === nome);
         this.encomendaAtual.push({ nome, qtd, precoUn: produto?.price || 0 });
@@ -370,43 +405,84 @@ window.app = {
         }
     },
 
-    async calcularEncomenda() {
-        const name = this.getVal("clienteNome");
-        const pombo = this.getVal("clientePombo") || "Não informado";
+  async calcularEncomenda() {
+    window.showToast("A registar encomenda...", "loading");
+    const name = this.getVal("clienteNome");
+    const pombo = this.getVal("clientePombo") || "Não informado";
 
-        if (!name || this.encomendaAtual.length === 0) return alert("Preencha o nome do cliente e adicione itens!");
+    if (!name || this.encomendaAtual.length === 0) {
+        return window.showToast(`Preencha o nome/dados do cliente`, "error")
+    }
 
-        const total = this.encomendaAtual.reduce((acc, item) => acc + (parseFloat(String(item.precoUn).replace(',', '.')) * item.qtd), 0);
+    // Cálculo do total
+    const total = this.encomendaAtual.reduce((acc, item) => {
+        const preco = parseFloat(String(item.precoUn).replace(',', '.'));
+        return acc + (preco * item.qtd);
+    }, 0);
 
-        try {
-            const pedidoCriado = await this.apiFetch('/api/pedidos', 'POST', { name, pombo, produtos: this.encomendaAtual });
-            const itensTexto = this.encomendaAtual.map(i => `🔸 **${i.nome}** (x${i.qtd})`).join('\n');
-            
-            await this.registrarLog({ action: "VENDA_REALIZADA", category: "FINANCEIRO", details: `Venda para ${name}. Total: $${total.toLocaleString()}.` });
-            
-            await this.enviarWebhook(this.config.webhookVendas, {
-                title: "Nova Encomenda Recebida!",
-                color: 0x00ff90,
-                fields: [
-                    { name: "👤 Cliente", value: name, inline: true },
-                    { name: "🕊️ Contato", value: pombo, inline: true },
-                    { name: "💰 Valor total", value: `$ ${total.toLocaleString()}` },
-                    { name: "📝 Itens da Encomenda", value: itensTexto }
-                ],
-                footer: { text: `SafraLog ID: ${pedidoCriado.id}` },
-                timestamp: new Date().toISOString()
-            });
+    // --- FEEDBACK VISUAL INSTANTÂNEO (UI OTIMISTA) ---
+    const btn = document.querySelector('button[onclick*="calcularEncomenda"]');
+    const containerPedidos = this.getEl("listaPedidosGeral");
+    
+    if (btn) btn.disabled = true; // Evita cliques duplos durante o processamento
+    if (containerPedidos) containerPedidos.style.opacity = "0.5"; // Indica que está salvando
 
-            alert(`Pedido finalizado com sucesso!`);
-            this.encomendaAtual = [];
-            this.setVal("clienteNome", "");
-            this.setVal("clientePombo", "");
-            this.atualizarViewEncomenda();
-            this.renderizarPedidos();
-        } catch (err) {
-            alert("Falha ao salvar pedido: " + err.message);
-        }
-    },
+    try {
+
+        const pedidoCriado = await this.apiFetch('api/pedidos', 'POST', { 
+        name, 
+        pombo, 
+        produtos: this.encomendaAtual 
+    }).catch(e => console.log(e.message))
+
+
+    // Verificação de segurança: se a action falhou mas não jogou erro
+    if (!pedidoCriado || pedidoCriado.error) {
+        throw new Error(pedidoCriado?.error || "Resposta inválida do servidor");
+    }
+        // 3. Registro de Log Centralizado
+        // Esta função também usará a Server Action internamente via apiFetch
+        await this.registrarLog({ 
+            action: "VENDA_REALIZADA", 
+            category: "FINANCEIRO", 
+            details: `Venda para ${name}. Total: $${total.toLocaleString()}.` 
+        });
+
+        // 4. Disparo do Webhook via Fila (Queue) no Servidor
+        const itensTexto = this.encomendaAtual.map(i => `🔸 **${i.nome}** (x${i.qtd})`).join('\n');
+        
+        await this.enviarWebhook(this.config.webhookVendas, {
+            title: "Nova Encomenda Recebida!",
+            color: 0x00ff90,
+            fields: [
+                { name: "👤 Cliente", value: name, inline: true },
+                { name: "🕊️ Contato", value: pombo, inline: true },
+                { name: "💰 Valor total", value: `$ ${total.toLocaleString()}` },
+                { name: "📝 Itens da Encomenda", value: itensTexto }
+            ],
+            footer: { text: `SafraLog ID: ${pedidoCriado.id || 'Processado'}` },
+            timestamp: new Date().toISOString()
+        });
+
+        // 5. Limpeza e Atualização da Interface
+        this.encomendaAtual = [];
+        this.setVal("clienteNome", "");
+        this.setVal("clientePombo", "");
+        
+        this.atualizarViewEncomenda(); // Limpa a lista de itens atual
+        await this.renderizarPedidos(); // Atualiza a lista geral de pedidos
+
+        window.showToast("Encomenda guardada com sucesso!", "success");
+
+    } catch (err) {
+        console.error("Erro na operação:", err.message);
+        window.showToast("Erro na operação: " + err.message, "error");
+    } finally {
+        // Restaura o estado visual original
+        if (btn) btn.disabled = false;
+        if (containerPedidos) containerPedidos.style.opacity = "1";
+    }
+},
 
     async renderizarPedidos() {
         const container = this.getEl("listaPedidosGeral");
@@ -442,27 +518,40 @@ window.app = {
         }
     },
 
-    async alterarStatusPedido(id, status) {
-        try {
-            const p = await this.apiFetch('/api/pedidos', 'PATCH', { id, status });
-            await this.registrarLog({ action: "PEDIDO_FINALIZADO", category: "LOGISTICA", details: `Pedido de ${p.name} concluído.` });
-            this.renderizarPedidos();
-        } catch (err) { alert("Erro ao finalizar pedido: " + err.message); }
-    },
+async alterarStatusPedido(id, status) {
+
+    const card = document.querySelector(`[onclick*="${id}"]`).closest('.card');
+    if (card) {
+        card.style.opacity = '0.5'; 
+        card.style.borderLeftColor = '#00ff90';
+    }
+
+    try {
+        await this.apiFetch('/api/pedidos', 'PATCH', { id, status });
+        this.renderizarPedidos(); 
+        card.style.opacity = '1';
+         await this.registrarLog({ action: "PEDIDO_FINALIZADO", category: "LOGISTICA", details: `Pedido de ${p.name} concluído.` });
+    } catch (err) { 
+        // 3. Reverte se der erro
+        window.showToast("Error: " + err.message, "error");
+        this.renderizarPedidos(); 
+    }
+},
+
 
     async removerPedido(id) {
-        if (!confirm(`⚠️ Deseja realmente excluir este pedido?`)) return;
+        if (!await window.askConfirm(`⚠️ Deseja realmente excluir este pedido?`)) return;
         try {
             await this.apiFetch(`/api/pedidos?id=${id}`, 'DELETE');
             await this.registrarLog({ action: "PEDIDO_REMOVIDO", category: "LOGISTICA", details: `Pedido ${id} removido.` });
             this.renderizarPedidos();
-        } catch (err) { alert("Erro ao remover: " + err.message); }
+        } catch (err) { window.showToast("Error: " + err.message, "error"); }
     },
 
     
     adicionarAoCarrinhoMercado(id, nome, preco) {
         const qtd = parseInt(this.getVal(`qtd_mercado_${id}`));
-        if (!qtd || qtd <= 0) return alert("Quantidade inválida!");
+        if (!qtd || qtd <= 0) return window.showToast("Quantidade Invalida!", "error");
 
         const existente = this.carrinhoMercado.find(i => i.id === id);
         existente ? existente.qtd += qtd : this.carrinhoMercado.push({ id, nome, preco, qtd });
@@ -499,9 +588,9 @@ window.app = {
     },
 
     async enviarPropostaMercado() {
-        if (this.carrinhoMercado.length === 0 || !this.empresaSelecionadaId) return alert("Carrinho vazio ou empresa não selecionada!");
+        if (this.carrinhoMercado.length === 0 || !this.empresaSelecionadaId) return window.showToast("Carrinho vazio ou empresa não selecionada!", "error")
         const empresaAlvo = this.mercadoRawData.find(c => c.id === this.empresaSelecionadaId);
-        if(!empresaAlvo) return alert("Empresa alvo não encontrada nos dados.");
+        if(!empresaAlvo) return window.showToast("Empresa alvo não encontrada nos dados.", "error")
 
         const total = this.carrinhoMercado.reduce((acc, item) => acc + (item.preco * item.qtd), 0);
         const itensTexto = this.carrinhoMercado.map(i => `🔸 **${i.nome}** (x${i.qtd}) - $${(i.preco * i.qtd).toFixed(2)}`).join('\n');
@@ -520,10 +609,11 @@ window.app = {
                     timestamp: new Date().toISOString()
                 });
             }
-            alert(`Proposta comercial enviada para ${empresaAlvo.name}!`);
+             window.showToast(`Proposta comercial enviada para ${empresaAlvo.name}!`, "success")
+
             this.carrinhoMercado = [];
             this.renderizarCarrinhoMercado();
-        } catch (err) { alert("Erro ao enviar proposta comercial."); }
+        } catch (err) { window.showToast(`Não foi possível enviar a proposta`, "error") }
     },
 
     
@@ -548,7 +638,7 @@ window.app = {
                     <div style="background:#0d0f14; padding:15px; border-radius:8px; margin:20px 0; border:1px dashed #00ff90; position:relative">
                         <span style="color:#00ff90; font-family:monospace; font-size:1.2rem; letter-spacing:2px">${senha}</span>
                     </div>
-                    <button onclick="navigator.clipboard.writeText('${senha}'); alert('Copiado!')" style="width:100%; background:#00ff90; color:#000; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; margin-bottom:10px">COPIAR SENHA</button>
+                    <button onclick="navigator.clipboard.writeText('${senha}');  window.showToast('Copiado', 'success')" style="width:100%; background:#00ff90; color:#000; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer; margin-bottom:10px">COPIAR SENHA</button>
                     <button onclick="document.getElementById('tempModalSenha').remove()" style="background:none; border:none; color:#ff4c4c; cursor:pointer; font-size:0.8rem">FECHAR</button>
                 </div>
             </div>`;
@@ -557,14 +647,14 @@ window.app = {
 
     async resetarSenhaFuncionario(userId, username) {
         const novaSenha = this.gerarSenhaForte(8);
-        if (!confirm(`Deseja resetar a senha de ${username}?\nA nova senha será: ${novaSenha}`)) return;
+        if (!await window.askConfirm(`Deseja resetar a senha de ${username}?\nA nova senha será: ${novaSenha}`)) return;
 
         try {
             await this.apiFetch('/api/users/reset-password', 'PATCH', { userId, newPassword: novaSenha });
             await this.registrarLog({ action: "SENHA_RESETADA", category: "SEGURANCA", details: `Senha de ${username} redefinida.` });
             this.exibirModalSenha(username, novaSenha);
             if(this.getEl('modalContratacao')) this.getEl('modalContratacao').style.display = 'none';
-        } catch (err) { alert("Erro ao resetar senha: " + err.message); }
+        } catch (err) { window.showToast(`Erro ao resetar senha`, 'error') }
     },
 
     async executarContratacao() {
@@ -574,27 +664,27 @@ window.app = {
         const roleText = roleInput?.options[roleInput.selectedIndex]?.text || "Não definido";
         const password = this.senhaTemporaria; 
 
-        if (!username) return alert("Digite um nome de usuário!");
+        if (!username) return window.showToast(`Digite um nome de usuário`, 'error');
 
         try {
             await this.apiFetch('/api/users', 'POST', { username, password, roleId, companyId: this.companyId });
             await this.registrarLog({ action: "FUNCIONARIO_ADMITIDO", category: "RH", details: `Colaborador ${username} contratado.` });
             
-            alert(`✅ FUNCIONÁRIO CONTRATADO!\nUsuário: ${username}\nSenha: ${password}\nCopie-a agora!`);
-            
+            window.showToast(`✅ FUNCIONÁRIO CONTRATADO!\nUsuário: ${username}\nSenha: ${password}\nCopie-a agora!`, 'success')
+
             this.getEl('modalContratacao').style.display = 'none';
             typeof this.carregarEquipe === "function" ? this.carregarEquipe() : window.location.reload();
-        } catch (err) { alert("Erro de conexão ao tentar contratar: " + err.message); }
+        } catch (err) { window.showToast(`Erro ao tentar contratar`, 'error') }
     },
 
     async excluirRole(id, nome) {
-        if (!confirm(`⚠️ Excluir o cargo "${nome}" permanentemente?`)) return;
+        if (!await window.askConfirm(`⚠️ Excluir o cargo "${nome}" permanentemente?`)) return;
         try {
             await this.apiFetch(`/api/roles?id=${id}`, 'DELETE');
             await this.registrarLog({ action: "CARGO_REMOVIDO", category: "RH", details: `Cargo ${nome} excluído.` });
-            alert("Cargo excluído com sucesso!");
+            window.showToast(`Cargo excluído com sucesso!`, 'success')
             if(window.carregarRoles) window.carregarRoles();
-        } catch (err) { alert("Falha ao excluir: " + err.message); }
+        } catch (err) { window.showToast(`Falha ao excluir cargo`, 'error') }
     }
 };
 

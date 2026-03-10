@@ -4,32 +4,36 @@ import { getToken } from "next-auth/jwt";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
+// app/api/pedidos/route.js
+
 export async function GET(req) {
   try {
     const token = await getToken({ req });
- const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-    }
-
-    if (!token || !token.companyId) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-    }
+    if (!token?.companyId) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
     const pedidos = await prisma.pedido.findMany({
       where: { companyId: token.companyId },
       orderBy: { id: 'desc' } 
     });
 
-    
-    const pedidosFormatados = pedidos.map(p => ({
-      ...p,
-      produtos: JSON.parse(p.produtos)
-    }));
+    const pedidosFormatados = pedidos.map(p => {
+      let produtosValidos = [];
+      try {
+        // Tenta dar o parse, se falhar ou estiver vazio, retorna array vazio
+        produtosValidos = p.produtos ? JSON.parse(p.produtos) : [];
+      } catch (e) {
+        console.error(`Erro no parse do pedido ${p.id}:`, e);
+        produtosValidos = [];
+      }
+
+      return {
+        ...p,
+        produtos: produtosValidos
+      };
+    });
 
     return NextResponse.json(pedidosFormatados);
   } catch (error) {
-    console.error("Erro ao buscar pedidos:", error);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }
@@ -96,22 +100,32 @@ export async function DELETE(req) {
 
 export async function POST(req) {
   try {
+    const session = await getServerSession(authOptions);
+    // Tenta pegar do token ou da sessão
     const token = await getToken({ req });
-    if (!token || !token.companyId) return NextResponse.json({ status: 401 });
+    const companyId = session?.user?.companyId || token?.companyId;
 
-    const { name, pombo, produtos } = await req.json();
+    if (!companyId) {
+      return NextResponse.json({ error: "Sessão inválida" }, { status: 401 });
+    }
 
+    const body = await req.json();
+    const { name, pombo, produtos } = body;
+
+    // Criando no banco com status inicial fixo para evitar erro de campo nulo
     const novoPedido = await prisma.pedido.create({
       data: {
-        name,
-        pombo,
-        companyId: token.companyId,
+        name: name,
+        pombo: pombo || "Não informado",
+        companyId: companyId,
+        status: "pendente", 
         produtos: JSON.stringify(produtos)
       }
     });
 
     return NextResponse.json(novoPedido);
   } catch (error) {
-    return NextResponse.json({ error: "Erro ao criar pedido" }, { status: 500 });
+    console.error("ERRO NO POST:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
