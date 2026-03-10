@@ -3,6 +3,20 @@
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 
+// Exemplo de uma Server Action para buscar dados
+export async function getAppData(endpoint) {
+    try {
+
+        const res = await fetch(`${endpoint}`, {
+            cache: 'no-store'
+        });
+        return await res.json();
+    } catch (e) {
+        return { error: "Falha ao carregar dados no servidor" };
+    }
+}
+
+
 export async function submitServerAction(endpoint, method = 'GET', body = null) {
     try {
         // 1. LIMPEZA DA URL
