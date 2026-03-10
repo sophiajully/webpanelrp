@@ -282,7 +282,7 @@ window.app = {
             await this.apiFetch('/api/crafts', 'POST', { name: nome, unit: unidade, insumos, price });
             this.carregarCrafts();
             window.showToast(`Receita salva com sucesso!`, 'success')
-            await this.registrarLog({ action: "RECEITA_CRIADA", category: "PRODUCAO", details: `O produto "${nome}" foi adicionado.` });
+            this.registrarLog({ action: "RECEITA_CRIADA", category: "PRODUCAO", details: `O produto "${nome}" foi adicionado.` });
            
             this.limparCamposCraft();
             
