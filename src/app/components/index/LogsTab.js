@@ -1,27 +1,66 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, History, Check, Copy } from "lucide-react";
-import { useEffect } from 'react';
+import { submitServerAction } from '@/app/actions/appActions'; 
+
 export default function LogsTab({ session, styles, isMobile }) {
-  // Movendo estados específicos para cá
+  // Estados de dados
+  const [logs, setLogs] = useState([]);
+  const [meta, setMeta] = useState({ page: 1, totalPages: 1 });
+  const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Estados dos Filtros (Controlados pelo React)
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+
   const webhookUrl = `https://tysaiw.com/webhook/${session?.user?.companyId}`;
+
+  // 1. FUNÇÃO DE CARREGAMENTO (Usa a Server Action)
+  const carregarDados = useCallback(async (newPage = 1) => {
+    setLoading(true);
+    try {
+      const companyId = session?.user?.companyId;
+      // Monta o endpoint com os estados atuais de busca e categoria
+      const endpoint = `company-logs?companyId=${companyId}&page=${newPage}&limit=10&search=${search}&category=${category}`;
+      
+      const res = await submitServerAction(endpoint, 'GET');
+
+      if (res && !res.error) {
+        setLogs(res.logs || []);
+        setMeta(res.meta || { page: 1, totalPages: 1 });
+      }
+    } catch (err) {
+      console.error("Erro ao carregar logs:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [session, search, category]); // Recria a função se os filtros mudarem
+
+  // 2. TRIGGER DE CARREGAMENTO
+  // Dispara sempre que a página monta ou search/category mudam
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      carregarDados(1);
+    }, 400); // Debounce para não sobrecarregar o servidor enquanto digita
+    return () => clearTimeout(delayDebounce);
+  }, [carregarDados]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(webhookUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-useEffect(() => {
 
-      const timer = setTimeout(() => {
-        if (window.app && typeof window.app.carregarLogs === 'function') {
-          window.app.carregarLogs();
-        }
-      }, 50);
-      return () => clearTimeout(timer);
-  }, []);
+  // Funções de paginação internas
+  const mudarPagina = (delta) => {
+    const nextPage = (meta.page || 1) + delta;
+    if (nextPage > 0 && nextPage <= (meta.totalPages || 1)) {
+      carregarDados(nextPage);
+    }
+  };
+
   return (
-    <div id="tab-logs" style={{...styles.pageContent, display: 'flex', flexDirection: 'column', gap: '24px'}}>
+    <div style={{...styles.pageContent, display: 'flex', flexDirection: 'column', gap: '24px'}}>
       
       {/* FILTROS */}
       <div style={styles.card}>
@@ -34,18 +73,18 @@ useEffect(() => {
             <label style={styles.labelInput}>Pesquisar Ação ou Detalhe</label>
             <input 
               type="text" 
-              id="searchLogInput" 
-              placeholder="Ex: Venda, Contratação, Erro..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Ex: Venda, Contratação..." 
               style={styles.baseInput} 
-              onInput={(e) => window.app?.carregarLogs(1, e.target.value)}
             />
           </div>
           <div style={styles.inputWrapper}>
             <label style={styles.labelInput}>Categoria</label>
             <select 
-              id="categoriaLogSelect" 
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
               style={styles.baseInput}
-              onChange={(e) => window.app?.carregarLogs(1, document.getElementById('searchLogInput').value)}
             >
               <option value="">Todas as Categorias</option>
               <option value="FINANCEIRO">Financeiro</option>
@@ -60,54 +99,72 @@ useEffect(() => {
       {/* TABELA */}
       <div style={{...styles.card, flex: 1, minHeight: '400px', display: 'flex', flexDirection: 'column'}}>
         <div style={styles.cardHeader}>
-          <div style={{display: 'flex', alignItems: 'center', gap: '12px', width: '100%'}}>
-            <div style={styles.headerIcon}><History size={18} /></div>
-            <h3 style={{margin: 0}}>Histórico de Atividades</h3>
-            {!isMobile && (
-              <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto'}}>
-                <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-end'}}>
-                   <span style={{fontSize: '0.65rem', color: '#4b5563', fontWeight: 'bold', textTransform: 'uppercase'}}>Webhook URL</span>
-                   <code style={styles.webhookLink}>
-                     {webhookUrl.replace(session?.user?.companyId, '••••••••••••')}
-                   </code>
-                </div>
-                <button 
-                  onClick={handleCopy} 
-                  style={{...styles.btnCopy, backgroundColor: copied ? 'rgba(0, 255, 144, 0.1)' : 'transparent', border: 'none', cursor: 'pointer', color: '#fff'}}
-                >
-                  {copied ? <Check size={16} color="#00ff90" /> : <Copy size={16} />}
-                </button>
-              </div>
-            )}
-          </div>
+           <div style={{display: 'flex', alignItems: 'center', gap: '12px', width: '100%'}}>
+             <div style={styles.headerIcon}><History size={18} /></div>
+             <h3 style={{margin: 0}}>Histórico de Atividades</h3>
+           </div>
         </div>
 
         <div style={{overflowX: 'auto', marginTop: '20px'}}>
           <table style={{width: '100%', borderCollapse: 'collapse', color: '#fff'}}>
             <thead>
-              <tr style={{textAlign: 'left', borderBottom: `1px solid ${styles.divider.backgroundColor || '#1c1c26'}`, color: '#4b5563', fontSize: '0.8rem'}}>
+               <tr style={{textAlign: 'left', borderBottom: '1px solid #1c1c26', color: '#4b5563', fontSize: '0.8rem'}}>
                 <th style={{padding: '12px 8px'}}>DATA/HORA</th>
                 <th style={{padding: '12px 8px'}}>AÇÃO</th>
                 <th style={{padding: '12px 8px'}}>DETALHES</th>
                 <th style={{padding: '12px 8px'}}>OPERADOR</th>
               </tr>
             </thead>
-            <tbody id="tabelaLogsCorpo">
-              {/* O seu window.app.carregarLogs vai preencher aqui via DOM */}
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="4" style={{textAlign:'center', padding:'40px'}}>Carregando...</td></tr>
+              ) : logs.length === 0 ? (
+                <tr><td colSpan="4" style={{textAlign:'center', padding:'40px', color:'#4b5563'}}>Nenhum registro encontrado.</td></tr>
+              ) : (
+                logs.map(log => {
+                  const cor = log.category === 'FINANCEIRO' ? '#22c55e' : log.category === 'RH' ? '#3b82f6' : log.action.includes('ERRO') ? '#ef4444' : '#d4a91c';
+                  return (
+                    <tr key={log.id} style={{borderBottom: '1px solid #11111a'}}>
+                      <td style={{padding: '14px 8px', fontSize: '0.8rem', color: '#4b5563', fontFamily: 'monospace'}}>
+                        {new Date(log.createdAt).toLocaleString('pt-BR')}
+                      </td>
+                      <td style={{padding: '14px 8px'}}>
+                        <span style={{background: `${cor}22`, color: cor, padding: '4px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: '800', border: `1px solid ${cor}44`}}>
+                          {log.action}
+                        </span>
+                      </td>
+                      <td style={{padding: '14px 8px', fontSize: '0.85rem', color: '#eee', maxWidth: '400px', lineHeight: '1.4'}}>
+                        {log.details}
+                      </td>
+                      <td style={{padding: '14px 8px', fontSize: '0.85rem', fontWeight: 'bold', color: '#d4a91c'}}>
+                        {log.user?.username || 'Sistema'}
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
             </tbody>
           </table>
         </div>
 
         {/* PAGINAÇÃO */}
-        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '24px', borderTop: `1px solid ${styles.divider.backgroundColor || '#1c1c26'}`}}>
-          <span id="paginacaoInfo" style={{fontSize: '0.85rem', color: '#4b5563', fontWeight: 'bold'}}>
-            Página 1 de 1
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '24px', borderTop: '1px solid #1c1c26'}}>
+          <span style={{fontSize: '0.85rem', color: '#4b5563', fontWeight: 'bold'}}>
+            Página {meta.page || 1} de {meta.totalPages || 1}
           </span>
           <div style={{display: 'flex', gap: '12px'}}>
-            <button onClick={() => window.app?.mudarPaginaLog(-1)} style={{...styles.baseButton, padding: '8px 16px', fontSize: '0.8rem', opacity: 0.8}}>
+            <button 
+              onClick={() => mudarPagina(-1)} 
+              disabled={meta.page <= 1 || loading}
+              style={{...styles.baseButton, padding: '8px 16px', opacity: (meta.page <= 1) ? 0.5 : 1}}
+            >
               Anterior
             </button>
-            <button onClick={() => window.app?.mudarPaginaLog(1)} style={{...styles.baseButton, ...styles.buttonPrimary, padding: '8px 16px', fontSize: '0.8rem'}}>
+            <button 
+              onClick={() => mudarPagina(1)} 
+              disabled={meta.page >= meta.totalPages || loading}
+              style={{...styles.baseButton, ...styles.buttonPrimary, padding: '8px 16px', opacity: (meta.page >= meta.totalPages) ? 0.5 : 1}}
+            >
               Próximo
             </button>
           </div>

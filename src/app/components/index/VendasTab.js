@@ -1,127 +1,209 @@
-import React from 'react';
-import { ShoppingCart, ClipboardList, X, FileText } from "lucide-react";
-import { useEffect } from 'react';
+'use client';
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { ShoppingCart, ClipboardList, X, FileText, Trash2, CheckCircle, Loader2 } from "lucide-react";
+import { submitServerAction } from "@/app/actions/appActions"; 
 
 export default function VendasTab({ styles, states, actions }) {
+    // Estados do Modal e UI vindos do componente pai
+    const { isModalVendaOpen } = states;
+    const { setIsModalVendaOpen } = actions;
 
-  const { isModalVendaOpen } = states;
-  const { setIsModalVendaOpen } = actions;
-useEffect(() => {
-    if (isModalVendaOpen) {
-      // Pequeno delay para garantir que o React terminou de colocar o modal no DOM
-      const timer = setTimeout(() => {
-        if (window.app && typeof window.app.carregarCrafts === 'function') {
-          window.app.carregarCrafts();
+    // Estados Locais para a lógica de Vendas
+    const [pedidos, setPedidos] = useState([]);
+    const [crafts, setCrafts] = useState([]);
+    const [encomendaAtual, setEncomendaAtual] = useState([]);
+    const [loading, setLoading] = useState(false);
+    
+    // Estados dos Inputs do Formulário
+    const [cliente, setCliente] = useState({ nome: "", contato: "" });
+    const [itemInput, setItemInput] = useState({ nome: "", qtd: "" });
+
+    // --- CARREGAMENTO DE DADOS ---
+
+    const carregarDados = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [dataCrafts, dataPedidos] = await Promise.all([
+                submitServerAction('/crafts', 'GET'),
+                submitServerAction('/pedidos', 'GET')
+            ]);
+
+            if (Array.isArray(dataCrafts)) setCrafts(dataCrafts);
+            if (Array.isArray(dataPedidos)) setPedidos(dataPedidos);
+        } catch (err) {
+            console.error("Erro ao carregar dados de vendas:", err);
+        } finally {
+            setLoading(false);
         }
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [isModalVendaOpen]);
+    }, []);
 
-  return (
-    <div id="tab-vendas" style={styles.pageContent}>
-      
-      {/* Botão para abrir o processo de venda */}
-      <div style={{ maxWidth: '800px', width: '100%', margin: '0 auto', display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
-        <button 
-          style={{...styles.baseButton, ...styles.buttonPrimary}} 
-          onClick={() => setIsModalVendaOpen(true)}
-        >
-          <ShoppingCart size={18} /> Nova Encomenda
-        </button>
-      </div>
+    useEffect(() => {
+        carregarDados();
+    }, [carregarDados]);
 
-      {/* Lista de Movimentações */}
-      <div style={{...styles.card, maxWidth: '800px', width: '100%', margin: '0 auto'}}>
-        <div style={styles.cardHeader}>
-          <div style={styles.headerIcon}><ClipboardList size={18} /></div>
-          <h3>Histórico de Vendas</h3>
-        </div>
-        <div 
-          id="listaPedidosGeral" 
-          style={{...styles.producaoGrid, minHeight: '100px', maxHeight: '400px', overflowY: 'auto'}}
-        >
-          Carregando registros...
-        </div>
-      </div>
+    // --- LÓGICA DA ENCOMENDA (CARRINHO) ---
 
-      {/* MODAL UNIFICADO: NOVA ENCOMENDA E RECIBO */}
-      {isModalVendaOpen && (
-        <div style={styles.modalOverlay}>
-          <div style={{...styles.modalContent, maxWidth: '900px'}}>
+    const adicionarItem = () => {
+        if (!itemInput.nome || !itemInput.qtd || itemInput.qtd <= 0) {
+            return alert("Selecione um produto e uma quantidade válida.");
+        }
+
+        const produtoRef = crafts.find(c => c.name === itemInput.nome);
+        const novoItem = {
+            nome: itemInput.nome,
+            qtd: parseInt(itemInput.qtd),
+            precoUn: produtoRef?.price || 0
+        };
+
+        setEncomendaAtual(prev => [...prev, novoItem]);
+        setItemInput({ ...itemInput, qtd: "" }); // Limpa apenas a quantidade
+    };
+
+    const removerItemCarrinho = (index) => {
+        setEncomendaAtual(prev => prev.filter((_, i) => i !== index));
+    };
+
+    // --- AÇÕES DE SERVIDOR (SERVER ACTIONS) ---
+
+    const finalizarEncomenda = async () => {
+        if (!cliente.nome || encomendaAtual.length === 0) {
+            return alert("Preencha o nome do cliente e adicione itens.");
+        }
+
+        setLoading(true);
+        try {
+            const res = await submitServerAction('/pedidos', 'POST', {
+                name: cliente.nome,
+                pombo: cliente.contato || "Não informado",
+                produtos: encomendaAtual
+            });
+
+            if (res.error) throw new Error(res.error);
+
+            alert("Encomenda registrada com sucesso!");
+            setEncomendaAtual([]);
+            setCliente({ nome: "", contato: "" });
+            setIsModalVendaOpen(false);
+            carregarDados(); // Atualiza a lista de pedidos
+        } catch (err) {
+            alert("Erro ao finalizar: " + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const alterarStatus = async (id, status) => {
+        try {
+            await submitServerAction('/pedidos', 'PATCH', { id, status });
+            carregarDados();
+        } catch (err) {
+            alert("Erro ao atualizar status.");
+        }
+    };
+
+    const excluirPedido = async (id) => {
+        if (!confirm("Deseja excluir este pedido permanentemente?")) return;
+        try {
+            await submitServerAction(`/pedidos?id=${id}`, 'DELETE');
+            carregarDados();
+        } catch (err) {
+            alert("Erro ao excluir pedido.");
+        }
+    };
+
+    return (
+        <div id="tab-vendas" style={styles.pageContent}>
             
-            <div style={styles.modalHeader}>
-              <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-                <div style={styles.headerIcon}><ShoppingCart size={18} /></div>
-                <h3 style={{margin: 0}}>Gerar Nova Encomenda</h3>
-              </div>
-              <button style={styles.btnCloseModal} onClick={() => setIsModalVendaOpen(false)}>
-                <X size={20} />
-              </button>
+            <div style={{ maxWidth: '800px', width: '100%', margin: '0 auto', display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+                <button 
+                    style={{...styles.baseButton, ...styles.buttonPrimary}} 
+                    onClick={() => setIsModalVendaOpen(true)}
+                >
+                    <ShoppingCart size={18} /> Nova Encomenda
+                </button>
             </div>
 
-            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px'}}>
-              
-              {/* Coluna Esquerda: Cadastro e Seleção */}
-              <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                <div style={{...styles.card, background: '#161922', padding: '20px'}}>
-                  <h4 style={{fontSize: '0.8rem', color: 'var(--cor-primaria)', marginBottom: '15px', textTransform: 'uppercase'}}>Dados do Cliente</h4>
-                  <div style={styles.gridResponsive}>
-                    <div style={styles.inputWrapper}>
-                      <label style={styles.labelInput}>Cliente</label>
-                      <input type="text" id="clienteNome" placeholder="Nome Completo" style={styles.baseInput} />
-                    </div>
-                    <div style={styles.inputWrapper}>
-                      <label style={styles.labelInput}>Contato</label>
-                      <input type="text" id="clientePombo" placeholder="ID/Telefone" style={styles.baseInput} />
-                    </div>
-                  </div>
+            {/* Lista de Pedidos */}
+            <div style={{...styles.card, maxWidth: '800px', width: '100%', margin: '0 auto'}}>
+                <div style={styles.cardHeader}>
+                    <div style={styles.headerIcon}><ClipboardList size={18} /></div>
+                    <h3>Histórico de Vendas</h3>
                 </div>
-
-                <div style={{...styles.card, background: '#161922', padding: '20px'}}>
-                  <h4 style={{fontSize: '0.8rem', color: 'var(--cor-primaria)', marginBottom: '15px', textTransform: 'uppercase'}}>Produtos</h4>
-                  <div style={styles.gridResponsive}>
-                    <div style={styles.inputWrapper}>
-                      <label style={styles.labelInput}>Produto</label>
-                      <select id="produtoSelect" style={styles.baseInput}></select>
-                    </div>
-                    <div style={styles.inputWrapper}>
-                      <label style={styles.labelInput}>Quantidade</label>
-                      <input type="number" id="quantidadeItem" placeholder="0" style={styles.baseInput} />
-                    </div>
-                  </div>
-                  <button 
-                    style={{...styles.baseButton, ...styles.buttonPrimary, marginTop: '20px', width: '100%'}} 
-                    onClick={() => window.app?.adicionarItem()}
-                  >
-                    + Adicionar Item
-                  </button>
+                <div style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {loading && pedidos.length === 0 ? (
+                        <div style={{ textAlign: 'center', color: '#666' }}><Loader2 className="animate-spin" /> Carregando...</div>
+                    ) : pedidos.map(p => (
+                        <div key={p.id} style={{ background: '#161625', padding: '15px', borderRadius: '10px', borderLeft: `4px solid ${p.status === 'finalizado' ? '#00ff90' : '#f1c40f'}` }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <strong style={{ color: '#fff' }}>👤 {p.name}</strong>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    {p.status !== 'finalizado' && (
+                                        <button onClick={() => alterarStatus(p.id, 'finalizado')} style={{ color: '#00ff90', background: 'none', border: 'none', cursor: 'pointer' }}><CheckCircle size={18}/></button>
+                                    )}
+                                    <button onClick={() => excluirPedido(p.id)} style={{ color: '#ff4c4c', background: 'none', border: 'none', cursor: 'pointer' }}><Trash2 size={18}/></button>
+                                </div>
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '5px' }}>
+                                {p.produtos?.map((item, idx) => (
+                                    <div key={idx}>• {item.nome} <b style={{color: 'var(--cor-primaria)'}}>(x{item.qtd})</b></div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
                 </div>
-              </div>
-
-              {/* Coluna Direita: Resumo e Finalização */}
-              <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                <div style={{...styles.card, background: '#161922', padding: '20px', flex: 1, display: 'flex', flexDirection: 'column'}}>
-                  <h4 style={{fontSize: '0.8rem', color: 'var(--cor-primaria)', marginBottom: '15px', textTransform: 'uppercase'}}>Resumo do Pedido</h4>
-                  <div 
-                    id="listaEncomenda" 
-                    style={{flex: 1, overflowY: 'auto', minHeight: '150px', marginBottom: '20px'}}
-                  >
-                    {/* Itens via scripts.js aparecem aqui */}
-                  </div>
-                  
-                  <button 
-                    onClick={() => window.app?.calcularEncomenda()} 
-                    style={{...styles.baseButton, ...styles.buttonOutline, width: '100%', borderColor: 'var(--cor-primaria)', color: 'var(--cor-primaria)'}}
-                  >
-                    <FileText size={18} /> Finalizar e Gerar Recibo
-                  </button>
-                </div>
-              </div>
             </div>
-          </div>
+
+            {/* Modal de Encomenda */}
+            {isModalVendaOpen && (
+                <div style={styles.modalOverlay}>
+                    <div style={{...styles.modalContent, maxWidth: '900px'}}>
+                        <div style={styles.modalHeader}>
+                            <h3 style={{margin: 0}}>Gerar Nova Encomenda</h3>
+                            <button style={styles.btnCloseModal} onClick={() => setIsModalVendaOpen(false)}><X size={20} /></button>
+                        </div>
+
+                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px'}}>
+                            {/* Inputs */}
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
+                                <div style={{...styles.card, background: '#161922', padding: '15px'}}>
+                                    <label style={styles.labelInput}>Cliente</label>
+                                    <input value={cliente.nome} onChange={e => setCliente({...cliente, nome: e.target.value})} style={styles.baseInput} placeholder="Nome" />
+                                    <label style={styles.labelInput}>Contato</label>
+                                    <input value={cliente.contato} onChange={e => setCliente({...cliente, contato: e.target.value})} style={styles.baseInput} placeholder="ID/Pombo" />
+                                </div>
+
+                                <div style={{...styles.card, background: '#161922', padding: '15px'}}>
+                                    <label style={styles.labelInput}>Produto</label>
+                                    <select value={itemInput.nome} onChange={e => setItemInput({...itemInput, nome: e.target.value})} style={styles.baseInput}>
+                                        <option value="">Selecione...</option>
+                                        {crafts.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                    </select>
+                                    <label style={styles.labelInput}>Qtd</label>
+                                    <input type="number" value={itemInput.qtd} onChange={e => setItemInput({...itemInput, qtd: e.target.value})} style={styles.baseInput} />
+                                    <button onClick={adicionarItem} style={{...styles.baseButton, ...styles.buttonPrimary, width: '100%', marginTop: '10px'}}>Adicionar</button>
+                                </div>
+                            </div>
+
+                            {/* Resumo */}
+                            <div style={{...styles.card, background: '#161922', padding: '15px', display: 'flex', flexDirection: 'column'}}>
+                                <h4 style={{color: 'var(--cor-primaria)', fontSize: '0.8rem'}}>ITENS ADICIONADOS</h4>
+                                <div style={{flex: 1, overflowY: 'auto', minHeight: '150px'}}>
+                                    {encomendaAtual.map((item, idx) => (
+                                        <div key={idx} style={{display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #333', fontSize: '0.85rem'}}>
+                                            <span>{item.nome} x{item.qtd}</span>
+                                            <button onClick={() => removerItemCarrinho(idx)} style={{color: '#ff4c4c', background: 'none', border: 'none'}}>✕</button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button onClick={finalizarEncomenda} disabled={loading} style={{...styles.baseButton, ...styles.buttonOutline, width: '100%', marginTop: '15px'}}>
+                                    {loading ? 'Processando...' : <><FileText size={16} /> Finalizar Pedido</>}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 }

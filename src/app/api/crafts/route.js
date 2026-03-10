@@ -78,20 +78,18 @@ export async function GET() {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  // 1. Tenta pegar os crafts que você acabou de colocar na sessão/company
-  const craftsDaSessao = session.user.company?.crafts;
-
-  if (craftsDaSessao && craftsDaSessao.length > 0) {
-    console.log("🚀 Retornando crafts DIRETO da sessão");
-    return NextResponse.json(craftsDaSessao);
+  try {
+    // BUSQUE SEMPRE DO BANCO DE DADOS (PRISMA)
+    // Ignore a sessão para as receitas, pois elas mudam toda hora
+    const crafts = await prisma.craft.findMany({
+      where: { companyId: session.user.companyId },
+      orderBy: { name: 'asc' }
+    });
+    
+    console.log(`✅ ${crafts.length} receitas carregadas do banco.`);
+    return NextResponse.json(crafts);
+  } catch (error) {
+    console.error("Erro ao buscar crafts:", error);
+    return NextResponse.json({ error: "Erro ao buscar receitas" }, { status: 500 });
   }
-
-  // 2. Fallback: Se por algum motivo a sessão não tiver os crafts, busca no banco
-  console.log("🔍 Sessão vazia, buscando crafts no Prisma...");
-  const crafts = await prisma.craft.findMany({
-    where: { companyId: session.user.companyId },
-    orderBy: { name: 'asc' }
-  });
-  
-  return NextResponse.json(crafts);
 }
