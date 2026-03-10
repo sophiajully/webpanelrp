@@ -297,9 +297,10 @@ window.app = {
             window.showToast(`Removendo...`, 'loading')
             await this.apiFetch(`/api/crafts?id=${id}`, 'DELETE');
             this.carregarCrafts();
-            await this.registrarLog({ action: "RECEITA_REMOVIDA", category: "PRODUCAO", details: `Uma receita (ID: ${id}) foi excluída.` });
-            
             window.showToast(`Receita removida com sucesso`, 'success')
+            this.registrarLog({ action: "RECEITA_REMOVIDA", category: "PRODUCAO", details: `Uma receita (ID: ${id}) foi excluída.` });
+            
+            
         } catch (err) {
             window.showToast(`Erro ao deletar receita.`, 'error')
         }
