@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search, History, Check, Copy } from "lucide-react";
-
+import { useEffect } from 'react';
 export default function LogsTab({ session, styles, isMobile }) {
   // Movendo estados específicos para cá
   const [copied, setCopied] = useState(false);
@@ -11,7 +11,15 @@ export default function LogsTab({ session, styles, isMobile }) {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+useEffect(() => {
 
+      const timer = setTimeout(() => {
+        if (window.app && typeof window.app.carregarLogs === 'function') {
+          window.app.carregarLogs();
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+  }, []);
   return (
     <div id="tab-logs" style={{...styles.pageContent, display: 'flex', flexDirection: 'column', gap: '24px'}}>
       
