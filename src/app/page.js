@@ -112,7 +112,7 @@ export default function Home() {
           />
         )}
         {activeTab === "tab-pagamentos" && (
-          <PagamentosTab session={session} styles={styles} />
+          <PagamentosTab session={session} styles={styles} isMobile={isMobile} />
         )}
 
         {activeTab === "tab-logs" && <LogsTab session={session} styles={styles} isMobile={isMobile} />}
