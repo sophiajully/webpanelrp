@@ -4,7 +4,6 @@ import { getToken } from "next-auth/jwt";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-// app/api/pedidos/route.js
 
 export async function GET(req) {
   try {

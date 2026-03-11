@@ -13,7 +13,7 @@ export default function ChatTab({ session }) {
         flexDirection: 'column',
         padding: '10px',
         width: '100%',
-        maxWidth: '1200px', // Opcional: centralizar em telas muito grandes
+        maxWidth: '1200px',
         margin: '0 auto'
       }}
     >

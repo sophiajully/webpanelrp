@@ -19,6 +19,7 @@ import VendasTab from "@/app/components/index/VendasTab";
 import ChatTab from "@/app/components/index/ChatTab";
 import Toast from "@/app/components/Toast";
 import ConfirmModal from "@/app/components/ConfirmModal";
+import PagamentosTab from "@/app/components/index/PagamentosTab";
 
 
 import { Settings, XCircle, Menu } from "lucide-react";
@@ -109,6 +110,9 @@ export default function Home() {
             styles={styles} newRole={states.newRole} setNewRole={actions.setNewRole}
             criarRole={actions.criarRole} loadingAction={states.loadingAction} roleList={states.roleList}
           />
+        )}
+        {activeTab === "tab-pagamentos" && (
+          <PagamentosTab session={session} styles={styles} />
         )}
 
         {activeTab === "tab-logs" && <LogsTab session={session} styles={styles} isMobile={isMobile} />}

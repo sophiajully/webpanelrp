@@ -38,7 +38,8 @@ model User {
 
   // Relação de Dono (Empresas que este usuário criou)
   ownedCompanies Company[] @relation("CompanyOwner")
-
+  paymentsReceived Payment[] @relation("UserPayments")
+  paymentsMade     Payment[] @relation("PayerUser")
   requests  HireRequest[]
   logs      CompanyLog[]
 }
@@ -66,6 +67,28 @@ model Company {
   pedidos       Pedido[]
   logs          CompanyLog[]
   avisos        Announcement[]
+  pagamentos       Payment[]
+}
+
+
+model Payment {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  userId      String
+  user        User     @relation("UserPayments", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Dono que efetuou o pagamento (opcional, pois fica nulo enquanto a ação for apenas "pendente")
+  paidById    String?
+  paidBy      User?    @relation("PayerUser", fields: [paidById], references: [id])
+
+  action      String
+  amount      Decimal  @default(0.0)
+  status      String   @default("PENDENTE")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model CompanyLog {

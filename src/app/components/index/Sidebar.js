@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Bell, MessageSquare, ShoppingCart, Hammer, Store, 
-  Shield, Users, Scroll, Key, LogOut, ChevronRight, Trash2 
+  Shield, Users, Scroll, Key, LogOut, ChevronRight, Trash2, CircleDollarSign
 } from "lucide-react";
 
 export default function Sidebar({ states, actions, styles }) {
@@ -150,6 +150,7 @@ export default function Sidebar({ states, actions, styles }) {
           )}
 
           <div style={styles.navLabel}>GESTÃO</div>
+          <NavItem active={activeTab === "tab-pagamentos"} icon={<CircleDollarSign size={18}/>} label="Pagamentos" onClick={() => handleTabClick("tab-pagamentos", "Pagamentos")} styles={styles} />
           
           {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
             <div style={styles.navItem} onClick={() => window.location.href='/mercadao'}>
