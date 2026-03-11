@@ -46,7 +46,7 @@ export default function VendasTab({ styles, states, actions }) {
 
     const adicionarItem = () => {
         if (!itemInput.nome || !itemInput.qtd || itemInput.qtd <= 0) {
-            return alert("Selecione um produto e uma quantidade válida.");
+            return window.showToast("Selecione um produto e uma quantidade válida.", 'error');
         }
 
         const produtoRef = crafts.find(c => c.name === itemInput.nome);
@@ -68,7 +68,7 @@ export default function VendasTab({ styles, states, actions }) {
 
     const finalizarEncomenda = async () => {
         if (!cliente.nome || encomendaAtual.length === 0) {
-            return alert("Preencha o nome do cliente e adicione itens.");
+            return window.showToast("Preencha o nome do cliente e adicione itens.", 'error');
         }
 
         setLoading(true);
@@ -81,13 +81,13 @@ export default function VendasTab({ styles, states, actions }) {
 
             if (res.error) throw new Error(res.error);
 
-            alert("Encomenda registrada com sucesso!");
+            window.showToast("Encomenda registrada com sucesso!", 'success');
             setEncomendaAtual([]);
             setCliente({ nome: "", contato: "" });
             setIsModalVendaOpen(false);
             carregarDados(); // Atualiza a lista de pedidos
         } catch (err) {
-            alert("Erro ao finalizar: " + err.message);
+            window.showToast("Erro ao finalizar: " + err.message, 'error');
         } finally {
             setLoading(false);
         }
@@ -98,7 +98,7 @@ export default function VendasTab({ styles, states, actions }) {
             await submitServerAction('/pedidos', 'PATCH', { id, status });
             carregarDados();
         } catch (err) {
-            alert("Erro ao atualizar status.");
+            window.showToast("Erro ao atualizar status.", 'error');
         }
     };
 
@@ -108,7 +108,7 @@ export default function VendasTab({ styles, states, actions }) {
             await submitServerAction(`/pedidos?id=${id}`, 'DELETE');
             carregarDados();
         } catch (err) {
-            alert("Erro ao excluir pedido.");
+            window.showToast("Erro ao excluir pedido.", 'error');
         }
     };
 
