@@ -3,25 +3,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Scroll, Trash2, Loader2, Megaphone } from "lucide-react";
 import { submitServerAction } from "@/app/actions/appActions"; 
+// 1. IMPORTAR A BIBLIOTECA
+import ReactMarkdown from 'react-markdown';
 
 export default function AvisosTab({ session, styles }) {
-  // --- ESTADOS LOCAIS ---
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [issubmitting, setIsSubmitting] = useState(false);
   
-  // Estado do Formulário
   const [newNotice, setNewNotice] = useState({ 
     title: "", 
     content: "", 
     priority: false 
   });
 
-  // --- CARREGAMENTO DE DADOS ---
   const fetchAnnouncements = useCallback(async () => {
     setLoading(true);
     try {
-      // Usando a Server Action para buscar os avisos
       const data = await submitServerAction('/announcements', 'GET');
       if (Array.isArray(data)) {
         setAnnouncements(data);
@@ -40,8 +38,6 @@ export default function AvisosTab({ session, styles }) {
     fetchAnnouncements();
   }, [fetchAnnouncements]);
 
-  // --- AÇÕES (POST E DELETE) ---
-
   const handlePostNotice = async () => {
     if (!newNotice.title || !newNotice.content) {
       return window.showToast("Preencha o título e o conteúdo do aviso.", 'error');
@@ -56,7 +52,6 @@ export default function AvisosTab({ session, styles }) {
 
       if (res.error) throw new Error(res.error);
 
-      // Limpa o formulário e recarrega a lista
       setNewNotice({ title: "", content: "", priority: false });
       fetchAnnouncements();
     } catch (err) {
@@ -79,13 +74,11 @@ export default function AvisosTab({ session, styles }) {
     }
   };
 
-  // Permissões
   const canAdmin = session?.user?.role?.isOwner || session?.user?.role?.canAdmin;
 
   return (
     <div id="tab-avisos" style={styles.pageContent}>
       
-      {/* FORMULÁRIO: SÓ APARECE PARA ADMINS */}
       {canAdmin && (
         <div style={{...styles.card, borderLeft: '4px solid var(--cor-primaria, #d4a91c)', marginBottom: '30px'}}>
           <div style={styles.cardHeader}>
@@ -94,14 +87,14 @@ export default function AvisosTab({ session, styles }) {
           </div>
           <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
             <input 
-              placeholder="Título do Aviso (Ex: Reunião no Celeiro)" 
+              placeholder="Título do Aviso" 
               style={styles.baseInput}
               value={newNotice.title}
               onChange={e => setNewNotice({...newNotice, title: e.target.value})}
             />
             <textarea 
-              placeholder="Escreva as ordens ou informações aqui..." 
-              style={{...styles.baseInput, minHeight: '100px', resize: 'vertical'}}
+              placeholder="Suporta Markdown! Use **negrito**, # Títulos ou - Listas..." 
+              style={{...styles.baseInput, minHeight: '120px', resize: 'vertical', fontFamily: 'monospace'}}
               value={newNotice.content}
               onChange={e => setNewNotice({...newNotice, content: e.target.value})}
             />
@@ -130,7 +123,6 @@ export default function AvisosTab({ session, styles }) {
         </div>
       )}
 
-      {/* LISTA DE ANÚNCIOS */}
       <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
         <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px'}}>
             <Megaphone size={20} color="var(--cor-primaria)" />
@@ -174,21 +166,46 @@ export default function AvisosTab({ session, styles }) {
                   <button 
                     onClick={() => handleDeleteNotice(notice.id)} 
                     style={{background: 'rgba(255,255,255,0.05)', border: 'none', color: '#555', cursor: 'pointer', padding: '8px', borderRadius: '5px'}}
-                    onMouseEnter={(e) => e.currentTarget.style.color = '#ff4c4c'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = '#555'}
                   >
                     <Trash2 size={16} />
                   </button>
                 )}
               </div>
               
-              <p style={{color: '#d1d5db', fontSize: '0.95rem', whiteSpace: 'pre-line', lineHeight: '1.6', margin: 0}}>
-                {notice.content}
-              </p>
+              {/* 2. SUBSTITUIR O <P> PELO COMPONENTE DE MARKDOWN */}
+              <div className="markdown-container" style={{color: '#d1d5db', fontSize: '0.95rem', lineHeight: '1.6'}}>
+                <ReactMarkdown>{notice.content}</ReactMarkdown>
+              </div>
+
             </div>
           ))
         )}
       </div>
+
+      {/* 3. ESTILIZAÇÃO PARA O MARKDOWN NÃO QUEBRAR O LAYOUT */}
+      <style jsx global>{`
+        .markdown-container h1, .markdown-container h2, .markdown-container h3 {
+          color: var(--cor-primaria);
+          margin-top: 15px;
+          margin-bottom: 8px;
+        }
+        .markdown-container p {
+          margin-bottom: 10px;
+        }
+        .markdown-container ul, .markdown-container ol {
+          margin-left: 20px;
+          margin-bottom: 10px;
+        }
+        .markdown-container strong {
+          color: #fff;
+        }
+        .markdown-container code {
+          background: rgba(255,255,255,0.1);
+          padding: 2px 4px;
+          border-radius: 4px;
+          font-family: monospace;
+        }
+      `}</style>
     </div>
   );
 }
