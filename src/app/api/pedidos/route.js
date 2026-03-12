@@ -144,16 +144,15 @@ export async function POST(req) {
     if (empresa?.webhookVendas) {
       // Formata a string de produtos para o Discord
       const itensTexto = produtos.map(p => 
-        `• ${p.quantity}x **${p.name}**`
+        `• ${p.qtd}x **${p.nome}**`
       ).join('\n') || "Nenhum item listado";
-
       // Calcula o total (assumindo que p.price e p.quantity existem)
-      const total = produtos.reduce((acc, p) => acc + (p.price * p.quantity), 0);
+      const total = produtos.reduce((acc, p) => acc + (p.precoUn * p.qtd), 0);
 
       await Queue.add("ENVIAR_WEBHOOK_DISCORD", {
         url: empresa.webhookVendas,
         embed: {
-          title: "📩 Nova Proposta Comercial!",
+          title: "Nova Encomenda",
           color: 0xd4a91c,
           fields: [
             { name: "👤 Cliente", value: name || "Desconhecido", inline: true },
