@@ -3,7 +3,18 @@ import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { Queue } from "@/lib/Queue";
 
+        // await fetch('/api/queue', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({
+        //     taskName: "ENVIAR_WEBHOOK_DISCORD",
+        //     payload: { 
+              
+        //     }
+        //   })
+        // });
 
 export async function GET(req) {
   try {
@@ -97,10 +108,11 @@ export async function DELETE(req) {
 }
 
 
+
+
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
-    // Tenta pegar do token ou da sessão
     const token = await getToken({ req });
     const companyId = session?.user?.companyId || token?.companyId;
 
@@ -111,20 +123,53 @@ export async function POST(req) {
     const body = await req.json();
     const { name, pombo, produtos } = body;
 
-    // Criando no banco com status inicial fixo para evitar erro de campo nulo
+    // 1. Busca os dados da empresa para pegar o webhookVendas
+    const empresa = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { name: true, webhookVendas: true }
+    });
+
+    // 2. Criando o pedido no banco de dados
     const novoPedido = await prisma.pedido.create({
       data: {
         name: name,
         pombo: pombo || "Não informado",
         companyId: companyId,
-        status: "pendente", 
+        status: "pendente",
         produtos: JSON.stringify(produtos)
       }
     });
 
+    // 3. Se a empresa tiver um webhook configurado, envia para a fila (Queue)
+    if (empresa?.webhookVendas) {
+      // Formata a string de produtos para o Discord
+      const itensTexto = produtos.map(p => 
+        `• ${p.quantity}x **${p.name}**`
+      ).join('\n') || "Nenhum item listado";
+
+      // Calcula o total (assumindo que p.price e p.quantity existem)
+      const total = produtos.reduce((acc, p) => acc + (p.price * p.quantity), 0);
+
+      await Queue.add("ENVIAR_WEBHOOK_DISCORD", {
+        url: empresa.webhookVendas,
+        embed: {
+          title: "📩 Nova Proposta Comercial!",
+          color: 0xd4a91c,
+          fields: [
+            { name: "👤 Cliente", value: name || "Desconhecido", inline: true },
+            { name: "📫 Pombo", value: pombo || "Não Informado", inline: true },
+            { name: "💰 Valor total", value: `**$ ${total.toFixed(2)}**` },
+            { name: "📝 Itens", value: itensTexto },
+          ],
+          footer: { text: `Mercadão | Fornecedor: ${empresa.name}` },
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+
     return NextResponse.json(novoPedido);
   } catch (error) {
-    console.error("ERRO NO POST:", error);
+    console.error("ERRO NO POST PEDIDO:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

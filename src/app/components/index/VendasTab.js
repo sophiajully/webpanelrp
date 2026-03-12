@@ -85,7 +85,7 @@ export default function VendasTab({ styles, states, actions }) {
             setEncomendaAtual([]);
             setCliente({ nome: "", contato: "" });
             setIsModalVendaOpen(false);
-            carregarDados(); // Atualiza a lista de pedidos
+            carregarDados()
         } catch (err) {
             window.showToast("Erro ao finalizar: " + err.message, 'error');
         } finally {
