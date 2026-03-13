@@ -3,65 +3,60 @@
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 
-// Exemplo de uma Server Action para buscar dados
+const getSafeUrl = (endpoint) => {
+    const host = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : (process.env.NEXTAUTH_URL || 'http://127.0.0.1:3000');
+
+    let cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    if (!cleanPath.startsWith('/api/')) {
+        cleanPath = `/api${cleanPath}`;
+    }
+    return `${host}${cleanPath}`;
+}
+
+
 export async function getAppData(endpoint) {
     try {
+        const url = getSafeUrl(endpoint);
 
-        const res = await fetch(`${endpoint}`, {
+        const res = await fetch(url, {
             cache: 'no-store'
         });
+        
+        if (!res.ok) throw new Error(`Erro ${res.status}`);
+        
         return await res.json();
     } catch (e) {
+        console.error("Erro no getAppData:", e.message);
         return { error: "Falha ao carregar dados no servidor" };
     }
 }
 
-
 export async function submitServerAction(endpoint, method = 'GET', body = null) {
     try {
-        // 1. LIMPEZA DA URL
-        let cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-        if (!cleanPath.startsWith('/api/')) {
-            cleanPath = `/api${cleanPath}`;
-        }
-
-        // 2. O SEGREDO PARA VERCEL: 
-        // Se estivermos no servidor, usamos uma URL RELATIVA ou o Host interno.
-        // Na Vercel, o 'fetch' para rotas internas deve preferencialmente ser evitado,
-        // mas se for usar, precisamos garantir o protocolo correto.
-        
-        const host = process.env.VERCEL_URL 
-            ? `https://${process.env.VERCEL_URL}` 
-            : (process.env.NEXTAUTH_URL || 'http://127.0.0.1:3000');
-            
-        const url = `${host}${cleanPath}`;
+        const url = getSafeUrl(endpoint);
 
         console.log(`[Server Action] Tentando conectar em: ${url}`);
 
         const cookieStore = await cookies();
-        // Importante: Pegar apenas o cookie de sessão para evitar headers gigantes
-        const sessionCookie = cookieStore.get('next-auth.session-token') || cookieStore.get('__Secure-next-auth.session-token');
-        const cookieHeader = sessionCookie ? `${sessionCookie.name}=${sessionCookie.value}` : '';
+        const allCookies = cookieStore.toString(); 
 
-
-const allCookies = cookieStore.toString(); 
-
-const options = {
-    method,
-    headers: {
-        'Content-Type': 'application/json',
-        'Cookie': allCookies // Passa todos, incluindo o CSRF e o Secure Token
-    },
-    cache: 'no-store',
-};
+        const options = {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cookie': allCookies 
+            },
+            cache: 'no-store',
+        };
 
         if (body && method !== 'GET') {
             options.body = JSON.stringify(body);
         }
 
-        // 3. FETCH COM TIMEOUT (Para não travar a Vercel)
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000); // 8 segundos de limite
+        const timeout = setTimeout(() => controller.abort(), 8000);
 
         const res = await fetch(url, { ...options, signal: controller.signal });
         clearTimeout(timeout);

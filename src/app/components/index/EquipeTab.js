@@ -5,6 +5,18 @@ import { UserPlus, Users, Key, Trash2, X, Loader2, Check, Ban, UserCircle, Copy,
 import { submitServerAction } from "@/app/actions/appActions";
 import { useSession } from "next-auth/react";
 
+const gerarSenhaSegura = (tamanho = 8) => {
+    const caracteres = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let senha = "";
+    const valoresAleatorios = new Uint32Array(tamanho);
+    window.crypto.getRandomValues(valoresAleatorios);
+    
+    for (let i = 0; i < tamanho; i++) {
+        senha += caracteres[valoresAleatorios[i] % caracteres.length];
+    }
+    return senha;
+};
+
 export default function EquipeTab({ styles }) {
   const { data: session } = useSession();
   
@@ -120,7 +132,7 @@ export default function EquipeTab({ styles }) {
   const executarContratacao = async () => {
     if (!novoFuncionario.username) return window.showToast ? window.showToast("Digite o login!", 'error') : alert("Login vazio");
     
-    const generatedPassword = Math.random().toString(36).slice(-8);
+    const generatedPassword = gerarSenhaSegura(12);
     
     setActionLoading(true);
     const res = await submitServerAction('/users', 'POST', {
