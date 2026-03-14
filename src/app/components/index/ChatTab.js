@@ -1,9 +1,11 @@
 import React from 'react';
 
-export default function ChatTab({ session }) {
+export default function ChatTab({ session, display }) {
   // Pegamos o username ou o name da sessão para o nickname do chat
   const nickname = session?.user?.username || session?.user?.name || '';
 
+  if(!display) return;
+  
   return (
     <div 
       id="tab-chat" 

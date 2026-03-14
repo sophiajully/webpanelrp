@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Shield, CheckCircle, ClipboardList, Trash2, Tag } from "lucide-react";
 import { submitServerAction } from '@/app/actions/appActions'; // Ajuste o caminho
 
-export default function RolesTab({ session, styles }) {
+export default function RolesTab({ session, styles, display }) {
   // Estados Locais
   const [roleList, setRoleList] = useState([]);
   const [loadingAction, setLoadingAction] = useState(false);
@@ -99,6 +99,8 @@ export default function RolesTab({ session, styles }) {
     color: '#ff4c4c',
     border: '1px solid rgba(255, 76, 76, 0.3)'
   };
+
+  if(!display) return;
 
   return (
     <div id="tab-roles" style={styles.pageContent}>

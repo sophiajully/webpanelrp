@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { submitServerAction } from '@/app/actions/appActions';
 import { TrendingUp, Users, DollarSign, Trophy, Target, Star, Briefcase } from "lucide-react";
 
-export default function DashboardTab({ session, styles, isMobile }) {
+export default function DashboardTab({ session, styles, isMobile, display }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const primaryColor = session?.user?.company?.colorPrimary || '#ff4c4c';
@@ -25,6 +25,8 @@ export default function DashboardTab({ session, styles, isMobile }) {
     { title: "Lucro (7d)", val: `$${data?.metrics?.saldoTotal || 0}`, icon: <TrendingUp size={20}/>, sub: "Últimos 7 dias" },
     { title: "Equipe", val: data?.metrics?.funcionariosTotal || 0, icon: <Users size={20}/>, sub: "Membros registrados" },
   ];
+
+  if(!display) return;
 
   return (
     <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '25px' }}>

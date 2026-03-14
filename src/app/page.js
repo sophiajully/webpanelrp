@@ -29,7 +29,7 @@ export default function Home() {
   const { states, actions } = useAppData();
   const { session, status, activeTab, isSidebarOpen, isMobile } = states;
   const router = useRouter();
-  if(status !== "authenticated") return router.push("/login")
+  if (status !== "authenticated") return router.push("/login")
   if (status === "loading") {
     return (
       <div style={styles.loadingScreen}>
@@ -38,7 +38,7 @@ export default function Home() {
       </div>
     );
   }
-  
+
 
   if (status === "authenticated" && !session?.user?.companyId && !session?.user?.isOwner) return <RestrictedAccess router={states.router} signOut={actions.signOut} styles={styles} />;
 
@@ -75,64 +75,59 @@ export default function Home() {
         </header>
 
 
-        {activeTab === "tab-avisos" && (
-          <AvisosTab
-            session={session} styles={styles} announcements={states.announcements}
-            newNotice={states.newNotice} setNewNotice={actions.setNewNotice}
-            handlePostNotice={actions.handlePostNotice} handleDeleteNotice={actions.handleDeleteNotice}
-          />
-        )}
+        <AvisosTab
+          session={session} styles={styles} announcements={states.announcements}
+          newNotice={states.newNotice} setNewNotice={actions.setNewNotice}
+          handlePostNotice={actions.handlePostNotice} handleDeleteNotice={actions.handleDeleteNotice}
+          display={activeTab === 'tab-avisos'}
+        />
+        <ChatTab session={session} display={activeTab === "tab-chat"} />
 
-        {activeTab === "tab-chat" && (
-          <ChatTab session={session} />
-        )}
 
-        {activeTab === "tab-registrar" && (
-          <RegistrarTab
-            styles={styles} craftList={states.craftList}
-            producaoQtds={states.producaoQtds} handleQtdChange={actions.handleQtdChange}
-            refreshData={actions.refreshData}
-          />
-        )}
 
-        {activeTab === "tab-vendas" && (
-          <VendasTab styles={styles} states={states} actions={actions} />
-        )}
+        <RegistrarTab
+          styles={styles} craftList={states.craftList}
+          producaoQtds={states.producaoQtds} handleQtdChange={actions.handleQtdChange}
+          refreshData={actions.refreshData}
+          display={activeTab === "tab-registrar"}
+        />
 
-        {activeTab === 'tab-dashboard' && (
-          <DashboardTab 
+        <VendasTab styles={styles} states={states} actions={actions} display={activeTab === "tab-vendas"} />
+
+
+
+        <DashboardTab
           styles={styles}
           session={session}
           isMobile={isMobile}
-          />
-        )}
-        {activeTab === "tab-equipe" && (
-          <EquipeTab
-            styles={styles} hireRequests={states.hireRequests} teamList={states.teamList}
-            roleList={states.roleList} gerenciarSolicitacao={actions.gerenciarSolicitacao}
-            mudarRoleUsuario={actions.mudarRoleUsuario} removerMembro={actions.removerMembro}
-          />
-        )}
+          display={activeTab === 'tab-dashboard'}
+        />
 
-        {activeTab === "tab-roles" && (
-          <RolesTab
-            styles={styles} newRole={states.newRole} setNewRole={actions.setNewRole}
-            criarRole={actions.criarRole} loadingAction={states.loadingAction} roleList={states.roleList}
-          />
-        )}
-        {activeTab === "tab-pagamentos" && (
-          <PagamentosTab session={session} styles={styles} isMobile={isMobile} />
-        )}
+        <EquipeTab
+          styles={styles} hireRequests={states.hireRequests} teamList={states.teamList}
+          roleList={states.roleList} gerenciarSolicitacao={actions.gerenciarSolicitacao}
+          mudarRoleUsuario={actions.mudarRoleUsuario} removerMembro={actions.removerMembro}
+          display={activeTab === "tab-equipe"}
+        />
 
-        {activeTab === "tab-logs" && <LogsTab session={session} styles={styles} isMobile={isMobile} />}
 
-        {activeTab === "tab-master" && (
-          <MasterTab
-            session={session} styles={styles} newKeyDays={states.newKeyDays}
-            setNewKeyDays={actions.setNewKeyDays} gerarNovaKey={actions.gerarNovaKey}
-            loadingKey={states.loadingKey} keyList={states.keyList} excluirKey={actions.excluirKey}
-          />
-        )}
+        <RolesTab
+          styles={styles} newRole={states.newRole} setNewRole={actions.setNewRole}
+          criarRole={actions.criarRole} loadingAction={states.loadingAction} roleList={states.roleList}
+          display={activeTab === "tab-roles"}
+        />
+
+        <PagamentosTab session={session} styles={styles} isMobile={isMobile} display={activeTab === "tab-pagamentos"} />
+
+
+        <LogsTab session={session} styles={styles} isMobile={isMobile} display={activeTab === "tab-logs"} />
+
+        <MasterTab
+          session={session} styles={styles} newKeyDays={states.newKeyDays}
+          setNewKeyDays={actions.setNewKeyDays} gerarNovaKey={actions.gerarNovaKey}
+          loadingKey={states.loadingKey} keyList={states.keyList} excluirKey={actions.excluirKey}
+          display={activeTab === "tab-master"}
+        />
       </main>
 
       {states.showPerfilModal && (

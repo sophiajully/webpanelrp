@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ShoppingCart, ClipboardList, X, FileText, Trash2, CheckCircle, Loader2 } from "lucide-react";
 import { submitServerAction } from "@/app/actions/appActions"; 
 
-export default function VendasTab({ styles, states, actions }) {
+export default function VendasTab({ styles, states, actions, display }) {
     // Estados do Modal e UI vindos do componente pai
     const { isModalVendaOpen } = states;
     const { setIsModalVendaOpen } = actions;
@@ -112,10 +112,12 @@ export default function VendasTab({ styles, states, actions }) {
         }
     };
 
+    if(!display) return;
+
     return (
         <div id="tab-vendas" style={styles.pageContent}>
             
-            <div style={{ maxWidth: '800px', width: '100%', margin: '0 auto', display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+            <div style={{ width: '100%', width: '100%', margin: '0 auto', display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
                 <button 
                     style={{...styles.baseButton, ...styles.buttonPrimary}} 
                     onClick={() => setIsModalVendaOpen(true)}
@@ -125,7 +127,7 @@ export default function VendasTab({ styles, states, actions }) {
             </div>
 
             {/* Lista de Pedidos */}
-            <div style={{...styles.card, maxWidth: '800px', width: '100%', margin: '0 auto'}}>
+            <div style={{...styles.card, width: '100%', width: '100%', margin: '0 auto'}}>
                 <div style={styles.cardHeader}>
                     <div style={styles.headerIcon}><ClipboardList size={18} /></div>
                     <h3>Histórico de Vendas</h3>

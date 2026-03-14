@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Search, History, Check, Copy } from "lucide-react";
 import { submitServerAction } from '@/app/actions/appActions'; 
 
-export default function LogsTab({ session, styles, isMobile }) {
+export default function LogsTab({ session, styles, isMobile, display }) {
   // Estados de dados
   const [logs, setLogs] = useState([]);
   const [meta, setMeta] = useState({ page: 1, totalPages: 1 });
@@ -58,6 +58,8 @@ export default function LogsTab({ session, styles, isMobile }) {
       carregarDados(nextPage);
     }
   };
+
+  if(!display) return;
 
   return (
     <div style={{...styles.pageContent, display: 'flex', flexDirection: 'column', gap: '24px'}}>

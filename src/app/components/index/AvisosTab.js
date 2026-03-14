@@ -5,7 +5,7 @@ import { Scroll, Trash2, Loader2, Megaphone, Plus, X } from "lucide-react";
 import { submitServerAction } from "@/app/actions/appActions"; 
 import ReactMarkdown from 'react-markdown';
 
-export default function AvisosTab({ session, styles }) {
+export default function AvisosTab({ session, styles, display }) {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [issubmitting, setIsSubmitting] = useState(false);
@@ -75,6 +75,7 @@ export default function AvisosTab({ session, styles }) {
 
   const canAdmin = session?.user?.role?.isOwner || session?.user?.role?.canAdmin;
 
+  if(!display) return;
   return (
     <div id="tab-avisos" style={{...styles.pageContent, position: 'relative'}}>
       

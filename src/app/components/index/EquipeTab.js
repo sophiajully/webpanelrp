@@ -17,7 +17,7 @@ const gerarSenhaSegura = (tamanho = 8) => {
     return senha;
 };
 
-export default function EquipeTab({ styles }) {
+export default function EquipeTab({ styles, display }) {
   const { data: session } = useSession();
   
   // --- ESTADOS ---
@@ -169,8 +169,10 @@ export default function EquipeTab({ styles }) {
     );
   }
 
+  if(!display) return;
+
   return (
-    <div style={{ padding: '10px', maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.3s ease-in' }}>
+    <div style={{ padding: '10px', margin: '0 auto', animation: 'fadeIn 0.3s ease-in', width: '100%' }}>
       
       {/* HEADER */}
       <div style={{ 

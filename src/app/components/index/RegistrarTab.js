@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Hammer, Calculator, Trash2, Package, X, Plus, Loader2 } from "lucide-react";
 import { submitServerAction } from "@/app/actions/appActions"; 
 
-export default function RegistrarTab({ styles }) {
+export default function RegistrarTab({ styles, display }) {
   const [craftList, setCraftList] = useState([]);
   const [producaoQtds, setProducaoQtds] = useState({});
   const [insumosCalculados, setInsumosCalculados] = useState({});
@@ -112,17 +112,19 @@ export default function RegistrarTab({ styles }) {
     fetchCrafts();
   };
 
+  if(!display) return;
+
   return (
-    <div id="tab-registrar" style={{...styles.pageContent, display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '100px'}}>
+    <div id="tab-registrar" style={{...styles.pageContent, display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '100px', width: '100%'}}>
       
-      <div style={{ maxWidth: '850px', width: '100%', margin: '0 auto', display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ width: '100%', width: '100%', margin: '0 auto', display: 'flex', justifyContent: 'space-between' }}>
         <h2 style={{color: '#fff'}}>Painel de Produção</h2>
         <button style={{...styles.baseButton, ...styles.buttonPrimary, width: 'auto'}} onClick={() => setIsModalOpen(true)}>
           <Plus size={18} /> Nova Receita
         </button>
       </div>
 
-      <div style={{...styles.card, maxWidth: '850px', width: '100%', margin: '0 auto', padding: '0'}}>
+      <div style={{...styles.card, width: '100%', width: '100%', margin: '0 auto', padding: '0'}}>
         <div style={{...styles.cardHeader, padding: '15px 20px'}}>
           <Calculator size={18} />
           <h3>Cálculo de Necessidades</h3>

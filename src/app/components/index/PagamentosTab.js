@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { submitServerAction } from '@/app/actions/appActions';
 import { Wallet, PlusCircle, CheckCircle, Clock, User, RefreshCw, Target, Award, ClipboardCheck } from "lucide-react";
 
-export default function PagamentosTab({ session, styles, isMobile }) {
-  const isOwner = false//session?.user?.isOwner || session?.user?.role?.isOwner || session?.user?.role?.canAdmin;
+export default function PagamentosTab({ session, styles, isMobile, display }) {
+  const isOwner = session?.user?.isOwner || session?.user?.role?.isOwner || session?.user?.role?.canAdmin;
   const primaryColor = session?.user?.company?.colorPrimary || '#ff4c4c';
 
   // Estados Financeiros
@@ -137,6 +137,8 @@ export default function PagamentosTab({ session, styles, isMobile }) {
     p.user?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.action?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if(!display) return;
 
   return (
     <div style={localStyles.container}>

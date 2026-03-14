@@ -6,7 +6,7 @@ export default function ConfigModal({
   onClose, 
   session, 
   styles, 
-  handleSalvarConfig 
+  handleSalvarConfig,
 }) {
   if (!isOpen) return null;
 

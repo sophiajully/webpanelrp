@@ -9,11 +9,13 @@ export default function MasterTab({
   gerarNovaKey, 
   loadingKey, 
   keyList = [], 
-  excluirKey 
+  excluirKey,
+  display
 }) {
   // Segurança extra: se não for o admin, nem renderiza o conteúdo
   if (session?.user?.name !== "admin") return null;
 
+  if(!display) return;
   return (
     <div id="tab-master" style={{...styles.pageContent, display: 'block'}}>
       
