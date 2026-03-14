@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Package, Trash2, ShoppingCart } from "lucide-react";
 import Toast from "@/app/components/Toast";
 import ConfirmModal from "@/app/components/ConfirmModal";
+import { submitServerAction } from "@/app/actions/appActions";
 
 export default function FornecedorPage({ params }) {
   const { data: session } = useSession();
@@ -33,8 +34,8 @@ export default function FornecedorPage({ params }) {
       if (!id) return;
       setLoading(true);
       try {
-        const res = await fetch(`/api/companies/${id}`); 
-        const data = await res.json();
+        const res = await submitServerAction(`/api/companies/${id}`) 
+        const data = res;
         if (data.error) setEmpresa(null);
         else setEmpresa(data);
       } catch (err) {
@@ -79,10 +80,7 @@ export default function FornecedorPage({ params }) {
     
     try {
       if (empresa.webhookVendas) {
-        await fetch('/api/queue', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        await submitServerAction('/api/queue', 'POST', {
             taskName: "ENVIAR_WEBHOOK_DISCORD",
             payload: { 
               url: empresa.webhookVendas, 
@@ -101,7 +99,6 @@ export default function FornecedorPage({ params }) {
               } 
             }
           })
-        });
       }
       window.showToast("Proposta enviada com sucesso!", 'success')
       setCarrinho([]);

@@ -21,7 +21,11 @@ export async function getAppData(endpoint) {
         const url = getSafeUrl(endpoint);
 
         const res = await fetch(url, {
-            cache: 'no-store'
+            cache: 'no-store',
+            headers: {
+    'Content-Type': 'application/json',
+    'x-internal-secret': process.env.INTERNAL_API_SECRET, 
+  }
         });
         
         if (!res.ok) throw new Error(`Erro ${res.status}`);
@@ -46,7 +50,8 @@ export async function submitServerAction(endpoint, method = 'GET', body = null) 
             method,
             headers: {
                 'Content-Type': 'application/json',
-                'Cookie': allCookies 
+                'Cookie': allCookies,
+                'x-internal-secret': process.env.INTERNAL_API_SECRET, 
             },
             cache: 'no-store',
         };

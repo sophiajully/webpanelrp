@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react"; // Certifique-se de ter o next-auth instalado
 import Image from "next/image";
 import { User, Shield, Briefcase, Key, ArrowLeft, CheckCircle2, Building2, Lock } from "lucide-react";
+import { submitServerAction } from "../actions/appActions";
 
 export default function Signup() {
   const [step, setStep] = useState(1);
@@ -32,8 +33,8 @@ export default function Signup() {
 
   useEffect(() => {
     if (type === 'employee') {
-      fetch('/api/companies?all=true')
-        .then(res => res.json())
+      submitServerAction('/api/companies?all=true', 'GET')
+        .then(res => res)
         .then(data => setCompanies(Array.isArray(data) ? data.filter(e => e.enableHireRequest) : data.companies.filter(e => e.enableHireRequest) || []))
         .catch(() => setCompanies([]));
     }

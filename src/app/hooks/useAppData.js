@@ -52,15 +52,15 @@ export function useAppData() {
   }, []);
 
   const carregarKeys = useCallback(async () => {
-    const res = await fetch('/api/keys');
-    const data = await res.json();
+    const res = await submitServerAction('/api/keys', 'GET');
+    const data = await res;
     if (Array.isArray(data)) setKeyList(data);
   }, []);
 
   const carregarMinhasEmpresas = useCallback(async () => {
     try {
-      const res = await fetch('/api/companies/owner'); 
-      const data = await res.json();
+      const res = await submitServerAction('/api/companies/owner' , 'GET'); 
+      const data = await res;
       if (Array.isArray(data)) setMinhasEmpresas(data);
     } catch (err) {
       console.error("Erro ao carregar empresas:", err);
@@ -69,8 +69,8 @@ export function useAppData() {
 
   const fetchAnnouncements = useCallback(async () => {
     try {
-      const res = await fetch('/api/announcements');
-      const data = await res.json();
+      const res = await submitServerAction('/api/announcements', 'GET');
+      const data = await res;
       if (Array.isArray(data)) setAnnouncements(data);
     } catch (error) {
       setAnnouncements([]);
@@ -79,8 +79,8 @@ export function useAppData() {
 
   const carregarPombo = useCallback(async () => {
     try {
-      const res = await fetch("/api/users/pombo");
-      const data = await res.json();
+      const res = await submitServerAction("/api/users/pombo", 'GET');
+      const data = await res;
       if (data.pombo) setMeuPombo(data.pombo);
     } catch (err) {
       console.error("Erro ao carregar pombo:", err);
@@ -88,8 +88,8 @@ export function useAppData() {
   }, []);
 
   const carregarCrafts = useCallback(async () => {
-    const res = await fetch('/api/crafts');
-    const data = await res.json();
+    const res = await submitServerAction('/api/crafts', 'GET');
+    const data = await res;
     if (Array.isArray(data)) {
       const formatados = data.map(c => ({
         ...c,
@@ -100,8 +100,8 @@ export function useAppData() {
   }, []);
 
   const carregarSolicitacoes = async () => {
-    const res = await fetch('/api/hire-requests');
-    const data = await res.json();
+    const res = await submitServerAction('/api/hire-requests', 'GET');
+    const data = await res;
     if (Array.isArray(data)) setHireRequests(data);
   };
 
@@ -145,7 +145,7 @@ export function useAppData() {
   const trocarEmpresaAtiva = async (novoCompanyId) => {
     setLoadingAction(true);
     try {
-      const res = await fetch('/api/users/switch-company', {
+      const res = await submitServerAction('/api/users/switch-company', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ companyId: novoCompanyId })
@@ -157,7 +157,7 @@ export function useAppData() {
         });
         window.location.reload();
       } else {
-        const erro = await res.json();
+        const erro = await res;
         alert(erro.error || "Erro ao trocar de empresa.");
       }
     } catch (err) {
@@ -170,12 +170,12 @@ export function useAppData() {
   const excluirEmpresa = async (id, nome) => {
     if (!confirm(`Tem certeza que deseja apagar a empresa "${nome}"? Todos os dados serão perdidos.`)) return;
     try {
-      const res = await fetch(`/api/companies/delete?id=${id}`, { method: 'DELETE' });
+      const res = await submitServerAction(`/api/companies/delete?id=${id}`, { method: 'DELETE' });
       if (res.ok) {
         alert("Empresa removida.");
         carregarMinhasEmpresas(); 
       } else {
-        const err = await res.json();
+        const err = await res;
         alert(err.error);
       }
     } catch (err) {
@@ -221,16 +221,13 @@ export function useAppData() {
 
   const handlePostNotice = async () => {
     if (!newNotice.title || !newNotice.content) return;
-    await fetch('/api/announcements', {
-      method: 'POST',
-      body: JSON.stringify(newNotice)
-    });
+    await submitServerAction('/api/announcements', 'GET', newNotice);
     setNewNotice({ title: "", content: "", priority: false });
     fetchAnnouncements();
   };
 
   const handleDeleteNotice = async (id) => {
-    await fetch(`/api/announcements?id=${id}`, { method: 'DELETE' });
+    await submitServerAction(`/api/announcements?id=${id}`, 'DELETE');
     fetchAnnouncements();
   };
 
@@ -241,11 +238,7 @@ export function useAppData() {
   const gerenciarSolicitacao = async (requestId, action) => {
     setLoadingAction(true);
     try {
-      const res = await fetch('/api/hire-requests', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId, action })
-      });
+      const res = await submitServerAction('/api/hire-requests', 'GET', { requestId, action });
       if (res.ok) {
         carregarSolicitacoes();
         carregarEquipe(); 
@@ -261,7 +254,7 @@ export function useAppData() {
     if (!confirm("Deseja realmente excluir esta chave de acesso?")) return;
     setLoadingAction(true);
     try {
-      const res = await fetch(`/api/keys?id=${id}`, { method: 'DELETE' });
+      const res = await submitServerAction(`/api/keys?id=${id}`, 'DELETE');
       if (res.ok) setKeyList(prev => prev.filter(k => k.id !== id));
     } catch (err) {
       alert("Erro de conexão.");
@@ -282,11 +275,7 @@ export function useAppData() {
 
     setLoadingAction(true);
     try {
-      const res = await fetch(`/api/equipe`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, roleId: novoRoleId })
-      });
+      const res = await submitServerAction(`/api/equipe`, 'PATCH', { userId, roleId: novoRoleId });
       if (!res.ok) throw new Error();
     } catch (err) {
       alert("Erro ao atualizar no banco de dados.");
@@ -300,7 +289,7 @@ export function useAppData() {
     if (!confirm("Deseja realmente remover este colaborador da empresa?")) return;
     setLoadingAction(true);
     try {
-      const res = await fetch(`/api/equipe?id=${id}`, { method: 'DELETE' });
+      const res = await submitServerAction(`/api/equipe?id=${id}`, 'DELETE');
       if (res.ok) setTeamList(prev => prev.filter(m => m.id !== id));
     } catch (err) { 
       alert("Erro ao deletar."); 
@@ -312,11 +301,7 @@ export function useAppData() {
   const criarRole = async () => {
     if (!newRole.name) return alert("Nome do cargo é obrigatório");
     setLoadingAction(true);
-    const res = await fetch('/api/roles', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newRole)
-    });
+    const res = await submitServerAction('/api/roles', 'POST', newRole);
     if (res.ok) {
       setNewRole({ name: "", canVendas: true, canCraft: true, canLogs: false, canAdmin: false });
       carregarRoles();
@@ -327,11 +312,7 @@ export function useAppData() {
   const gerarNovaKey = async () => {
     setLoadingKey(true);
     try {
-      const res = await fetch('/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ days: newKeyDays })
-      });
+      const res = await submitServerAction('/api/keys', 'POST', { days: newKeyDays });
       if (res.ok) {
         alert("Chave gerada com sucesso!");
         carregarKeys();

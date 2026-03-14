@@ -4,6 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 import { Send, ChevronLeft, ChevronRight, Search, LogOut, Building2 } from "lucide-react";
+import { submitServerAction } from "../actions/appActions";
 
 export default function SelecaoEmpresas() {
   const { data: session } = useSession();
@@ -26,8 +27,8 @@ export default function SelecaoEmpresas() {
   const carregarEmpresas = useCallback(async (page = 1, search = "") => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/companies?page=${page}&limit=15&search=${search}&empresas=true`);
-      const data = await res.json();
+      const res = await submitServerAction(`/api/companies?page=${page}&limit=15&search=${search}&empresas=true`, 'GET');
+      const data = await res;
       const empresas = data.companies?.filter(e => e.enableHireRequest)
       setEmpresas(empresas || []);
       setMeta(data.meta || { page: 1, totalPages: 1 });
@@ -41,9 +42,9 @@ export default function SelecaoEmpresas() {
   
   const carregarMeusPedidos = useCallback(async () => {
     try {
-      const res = await fetch('/api/hire-requests/me'); 
+      const res = await submitServerAction('/api/hire-requests/me', 'GET'); 
       if (res.ok) {
-        const data = await res.json();
+        const data = await res;
         setPedidosEnviados(data.map(req => req.companyId));
       }
     } catch (err) {
@@ -54,9 +55,9 @@ export default function SelecaoEmpresas() {
   
   const carregarMinhasEmpresas = useCallback(async () => {
     try {
-      const res = await fetch('/api/companies/owner');
+      const res = await submitServerAction('/api/companies/owner', 'GET');
       if (res.ok) {
-        const data = await res.json();
+        const data = await res;
         setMinhasEmpresas(data.map(emp => emp.id));
       }
     } catch (err) {
@@ -96,11 +97,7 @@ export default function SelecaoEmpresas() {
 
     setEnviando(companyId);
     try {
-      const res = await fetch('/api/hire-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyId })
-      });
+      const res = await submitServerAction('/api/hire-requests', 'POST', { companyId });
       
       if (res.ok) {
         alert("✅ Solicitação enviada! Aguarde aprovação.");

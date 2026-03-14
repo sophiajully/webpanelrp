@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Store, ArrowLeft, Users, Package, ChevronLeft, ChevronRight } from "lucide-react";
 import Toast from "@/app/components/Toast";
 import ConfirmModal from "@/app/components/ConfirmModal";
+import { submitServerAction } from "../actions/appActions";
 
 export default function MercadaoGeral() {
   const { data: session } = useSession();
@@ -27,8 +28,8 @@ export default function MercadaoGeral() {
   async function carregarEmpresas(p) {
     setLoading(true);
     try {
-      const res = await fetch(`/api/companies?page=${p}&limit=8`);
-      const data = await res.json();
+      const res = await submitServerAction(`/api/companies?page=${p}&limit=8`, 'GET')
+      const data = res;
       const filtradas = data.companies.filter(c => 
         String(c.id) !== String(session?.user?.companyId) && 
         c._count.crafts > 0
