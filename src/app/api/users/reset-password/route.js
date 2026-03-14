@@ -5,18 +5,20 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import bcrypt from "bcryptjs";
 import crypto from 'node:crypto'
 
-
 const gerarSenhaSegura = (tamanho = 8) => {
     const caracteres = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const numCaracteres = caracteres.length;
     let senha = "";
-    
-    // Criamos um buffer de bytes aleatórios
-    const bytesAleatorios = crypto.randomBytes(tamanho);
-    
-    for (let i = 0; i < tamanho; i++) {
-        // Usamos o byte aleatório para pegar o índice do caractere
-        senha += caracteres[bytesAleatorios[i] % caracteres.length];
+
+    const limiteEfetivo = 256 - (256 % numCaracteres);
+
+    while (senha.length < tamanho) {
+        const byte = crypto.randomBytes(1)[0];
+        if (byte < limiteEfetivo) {
+            senha += caracteres[byte % numCaracteres];
+        }
     }
+
     return senha;
 };
 

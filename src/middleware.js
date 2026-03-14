@@ -6,7 +6,7 @@ import { LRUCache } from 'lru-cache';
 // a memória não é compartilhada entre as instâncias. O rate limit será por "nó".
 const cache = new LRUCache({
   max: 10000,
-  ttl: 500 * 1000,
+  ttl: 60 * 1000,
 });
 
 export async function middleware(req) {
@@ -44,7 +44,7 @@ export async function middleware(req) {
   
   const id = token?.sub || req.ip || req.headers.get('x-forwarded-for') || 'anonymous';
   
-  const limit = 60; 
+  const limit = 500; 
   const currentUsage = cache.get(id) || 0;
 
   if (currentUsage >= limit) {
