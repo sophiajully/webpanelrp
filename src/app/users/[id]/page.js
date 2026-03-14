@@ -7,6 +7,54 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { User as UserIcon, Building, Briefcase, Mail, Star, CreditCard, UserPlus } from "lucide-react";
 import HireButton from "@/app/components/index/HireButton"; 
 
+// Função para gerar metadados dinâmicos
+export async function generateMetadata({ params }) {
+  const { id } = await params;
+
+  // Busca apenas o necessário para o SEO
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { 
+      username: true, 
+      pombo: true,
+      company: { select: { name: true } }
+    },
+  });
+
+  if (!user) {
+    return {
+      title: "Usuário não encontrado | SafraLog",
+    };
+  }
+
+  const description = `Perfil de ${user.username} na SafraLog. ${
+    user.company ? `Trabalha em: ${user.company.name}.` : "Disponível para contratação."
+  } Pombo: ${user.pombo || 'Não informado'}.`;
+
+  return {
+    title: `${user.username} | SafraLog`,
+    description: description,
+    openGraph: {
+      title: `Perfil de ${user.username}`,
+      description: description,
+      type: "profile",
+      url: `https://tysaiw.com/users/${id}`,
+      images: [
+        {
+          url: "/isotipo.png",
+          width: 1200,
+          height: 630,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${user.username} | SafraLog`,
+      description: description,
+    },
+  };
+}
+
 export default async function UserProfile({ params }) {
   const { id } = await params;
   const session = await getServerSession(authOptions);
