@@ -23,11 +23,13 @@ import PagamentosTab from "@/app/components/index/PagamentosTab";
 
 
 import { Settings, XCircle, Menu } from "lucide-react";
-
+import DashboardTab from "./components/index/DashboardTab";
+import { useRouter } from "next/navigation";
 export default function Home() {
   const { states, actions } = useAppData();
   const { session, status, activeTab, isSidebarOpen, isMobile } = states;
-
+  const router = useRouter();
+  if(status !== "authenticated") return router.push("/login")
   if (status === "loading") {
     return (
       <div style={styles.loadingScreen}>
@@ -36,10 +38,10 @@ export default function Home() {
       </div>
     );
   }
+  
 
-  if (status === "authenticated" && !session?.user?.companyId && !session?.user?.isOwner) {
-    return <RestrictedAccess router={states.router} signOut={actions.signOut} styles={styles} />;
-  }
+  if (status === "authenticated" && !session?.user?.companyId && !session?.user?.isOwner) return <RestrictedAccess router={states.router} signOut={actions.signOut} styles={styles} />;
+
 
   return (
     <div style={styles.layoutWrapper}>
@@ -97,6 +99,13 @@ export default function Home() {
           <VendasTab styles={styles} states={states} actions={actions} />
         )}
 
+        {activeTab === 'tab-dashboard' && (
+          <DashboardTab 
+          styles={styles}
+          session={session}
+          isMobile={isMobile}
+          />
+        )}
         {activeTab === "tab-equipe" && (
           <EquipeTab
             styles={styles} hireRequests={states.hireRequests} teamList={states.teamList}

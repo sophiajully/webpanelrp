@@ -8,54 +8,42 @@ export async function POST(request) {
     const { username, password, type, companyName, accessKey, selectedCompanyId } = body;
 
     // 1. Validação básica de campos
-    if (!username || !password || !type) {
-      return NextResponse.json({ error: "Nome ou Senha inválidos." }, { status: 400 });
+    if (!username || username.length < 3) {
+      return NextResponse.json({ error: "Nome de cidadão muito curto." }, { status: 400 });
+    }
+    if (!password || password.length < 8) {
+      return NextResponse.json({ error: "A senha deve ter no mínimo 8 caracteres." }, { status: 400 });
     }
 
     // 2. Verificar se o cidadão já existe
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) {
-      return NextResponse.json({ error: "Nome ou Senha inválidos." }, { status: 400 });
+      return NextResponse.json({ error: "Este nome já consta nos registros do cartório." }, { status: 400 });
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // --- FLUXO PARA PROPRIETÁRIOS (FUNDAÇÃO DE EMPRESA) ---
+    // --- FLUXO PARA PROPRIETÁRIOS ---
     if (type === 'owner') {
       if (!companyName || !accessKey) {
-        return NextResponse.json({ error: "Nome da empresa e Chave de Acesso são necessários." }, { status: 400 });
+        return NextResponse.json({ error: "Dados da empresa incompletos." }, { status: 400 });
       }
 
-      // 3. Validar a AccessKey antes de qualquer coisa
-      const keyData = await prisma.accessKey.findUnique({
-        where: { key: accessKey }
-      });
+      const keyData = await prisma.accessKey.findUnique({ where: { key: accessKey } });
 
-      if (!keyData) {
-        return NextResponse.json({ error: "Esta Chave de Acesso é inexistente ou inválida." }, { status: 400 });
+      if (!keyData || keyData.used) {
+        return NextResponse.json({ error: "Chave de acesso inválida ou já utilizada." }, { status: 400 });
       }
 
-      if (keyData.used) {
-        return NextResponse.json({ error: "Esta Chave de Acesso já foi utilizada por outro cidadão." }, { status: 400 });
-      }
-
-      // 4. Iniciar Transação
       await prisma.$transaction(async (tx) => {
-        
-        // A. Marcar a chave como usada para evitar race conditions
         await tx.accessKey.update({
           where: { id: keyData.id },
-          data: { 
-            used: true,
-            usedBy: username
-          }
+          data: { used: true, usedBy: username }
         });
 
-        // B. Calcular data de expiração baseada nos dias da chave
         const expirationDate = new Date();
         expirationDate.setDate(expirationDate.getDate() + keyData.days);
 
-        // C. Criar o Usuário
         const user = await tx.user.create({
           data: {
             username,
@@ -65,7 +53,6 @@ export async function POST(request) {
           },
         });
 
-        // D. Criar a Empresa e a Role de Dono
         const company = await tx.company.create({
           data: {
             name: companyName.toUpperCase(),
@@ -84,7 +71,6 @@ export async function POST(request) {
           include: { roles: true }
         });
 
-        // E. Vincular usuário à empresa e ao cargo
         await tx.user.update({
           where: { id: user.id },
           data: {
@@ -94,30 +80,51 @@ export async function POST(request) {
         });
       });
 
-      return NextResponse.json({ message: "Sua empresa foi fundada com sucesso!" }, { status: 201 });
+      return NextResponse.json({ message: "Empresa fundada com sucesso!" }, { status: 201 });
     }
 
-    // --- FLUXO PARA TRABALHADORES (ALISTAMENTO) ---
+    // --- FLUXO PARA TRABALHADORES (CORRIGIDO) ---
     if (type === 'employee') {
       if (!selectedCompanyId) {
         return NextResponse.json({ error: "Selecione uma empresa para se alistar." }, { status: 400 });
       }
 
-      await prisma.user.create({
-        data: {
-          username,
-          password: hashedPassword,
-          companyId: selectedCompanyId,
-        }
+      // Validar se a empresa existe e aceita solicitações
+      const targetCompany = await prisma.company.findUnique({
+        where: { id: selectedCompanyId }
       });
 
-      return NextResponse.json({ message: "Alistamento concluído!" }, { status: 201 });
+      if (!targetCompany || !targetCompany.enableHireRequest) {
+        return NextResponse.json({ error: "Esta empresa não está aceitando novos recrutas." }, { status: 400 });
+      }
+
+      await prisma.$transaction(async (tx) => {
+        // Criamos o usuário SEM companyId (ele ainda não é membro oficial)
+        const newUser = await tx.user.create({
+          data: {
+            username,
+            password: hashedPassword,
+            companyId: null, // Garante que começa nulo
+          }
+        });
+
+        // Criamos a solicitação de contratação (HireRequest)
+        await tx.hireRequest.create({
+          data: {
+            userId: newUser.id,
+            companyId: selectedCompanyId,
+            status: "pending" // Status inicial
+          }
+        });
+      });
+
+      return NextResponse.json({ message: "Solicitação enviada! Aguarde a aprovação do dono." }, { status: 201 });
     }
 
     return NextResponse.json({ error: "Função inválida." }, { status: 400 });
 
   } catch (error) {
     console.error("ERRO_SIGNUP:", error);
-    return NextResponse.json({ error: "Erro interno no cartório da fronteira." }, { status: 500 });
+    return NextResponse.json({ error: "Erro interno no servidor." }, { status: 500 });
   }
 }

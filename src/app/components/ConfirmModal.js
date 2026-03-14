@@ -93,14 +93,14 @@ export default function ConfirmModal() {
               padding: '10px 18px',
               borderRadius: '8px',
               border: 'none',
-              backgroundColor: '#8b0000', // Seu vermelho SafraLog
+              backgroundColor: '#8b0000',
               color: 'white',
               cursor: 'pointer',
               fontSize: '14px',
               fontWeight: 'bold'
             }}
           >
-            Confirmar Exclusão
+            Confirmar
           </button>
         </div>
       </div>

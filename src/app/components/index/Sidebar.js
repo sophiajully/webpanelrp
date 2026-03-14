@@ -1,7 +1,8 @@
 import React from 'react';
 import { 
   Bell, MessageSquare, ShoppingCart, Hammer, Store, 
-  Shield, Users, Scroll, Key, LogOut, ChevronRight, Trash2, CircleDollarSign
+  Shield, Users, Scroll, Key, LogOut, ChevronRight, Trash2, CircleDollarSign,
+  ChartArea
 } from "lucide-react";
 
 export default function Sidebar({ states, actions, styles }) {
@@ -138,6 +139,7 @@ export default function Sidebar({ states, actions, styles }) {
         <div style={styles.navLabel}>PRINCIPAL</div>
         <div style={styles.navMenu}>
           <NavItem active={activeTab === "tab-avisos"} icon={<Bell size={18}/>} label="Avisos" onClick={() => handleTabClick("tab-avisos", "Avisos")} styles={styles} />
+          <NavItem active={activeTab === "tab-dashboard"} icon={<ChartArea size={18}/>} label="Lashboard" onClick={() => handleTabClick("tab-dashboard", "Dashboard")} styles={styles} />
           
           <NavItem active={activeTab === "tab-chat"} icon={<MessageSquare size={18}/>} label="Chat Interno" onClick={() => handleTabClick("tab-chat", "Chat da Fazenda")} styles={styles} />
 

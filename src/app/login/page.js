@@ -120,7 +120,7 @@ export default function Login() {
         </div>
       </form>
 
-      <div style={styles.versionTag}>V. 2.4.0 - FRONTIER EDITION</div>
+      <div style={styles.versionTag}>V. 7.1.111</div>
     </div>
   );
 }

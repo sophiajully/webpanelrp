@@ -7,8 +7,10 @@ export function useAppData() {
   const { data: session, status, update } = useSession();
   const router = useRouter();
 
+  
+
   // --- ESTADOS ---
-  const [activeTab, setActiveTab] = useState("tab-vendas");
+  const [activeTab, setActiveTab] = useState("tab-dashboard");
   const [producaoQtds, setProducaoQtds] = useState({});
   const [newKeyDays, setNewKeyDays] = useState(30);
   const [loadingKey, setLoadingKey] = useState(false);

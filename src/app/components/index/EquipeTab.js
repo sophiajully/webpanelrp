@@ -101,7 +101,7 @@ export default function EquipeTab({ styles }) {
     const user = teamList.find(u => u.id === id);
     const confirmar = window.askConfirm 
       ? await window.askConfirm(`⚠️ Deseja realmente remover ${user?.username}?`) 
-      : confirm(`Deseja remover ${user?.username}?`);
+      : await window.askConfirm(`Deseja remover ${user?.username}?`);
       
     if (!confirmar) return;
     
@@ -113,7 +113,7 @@ export default function EquipeTab({ styles }) {
   const handleResetarSenha = async (userId, username) => {
     const confirmar = window.askConfirm 
       ? await window.askConfirm(`Deseja resetar a senha de ${username}?`) 
-      : confirm("Resetar senha?");
+      : await window.askConfirm("Resetar senha?");
       
     if (!confirmar) return;
 

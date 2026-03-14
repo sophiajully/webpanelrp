@@ -2,11 +2,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+
 import { Send, ChevronLeft, ChevronRight, Search, LogOut, Building2 } from "lucide-react";
 
 export default function SelecaoEmpresas() {
   const { data: session } = useSession();
   const router = useRouter();
+
+  if(!session?.user) return router.push('/login')
 
   
   const [empresas, setEmpresas] = useState([]);
