@@ -20,6 +20,7 @@ import ChatTab from "@/app/components/index/ChatTab";
 import Toast from "@/app/components/Toast";
 import ConfirmModal from "@/app/components/ConfirmModal";
 import PagamentosTab from "@/app/components/index/PagamentosTab";
+import FerramentasTab from "./components/index/FerramentasTab";
 
 
 import { Settings, XCircle, Menu } from "lucide-react";
@@ -28,8 +29,7 @@ import { useRouter } from "next/navigation";
 export default function Home() {
   const { states, actions } = useAppData();
   const { session, status, activeTab, isSidebarOpen, isMobile } = states;
-  const router = useRouter();
-  if (status && status !== "authenticated") return router?.push("/login")
+
   if (status === "loading") {
     return (
       <div style={styles.loadingScreen}>
@@ -39,10 +39,9 @@ export default function Home() {
     );
   }
 
-
+  if(status === 'unauthenticated') return <RestrictedAccess router={states.router} signOut={actions.signOut} styles={styles} />;
   if (status === "authenticated" && !session?.user?.companyId && !session?.user?.isOwner) return <RestrictedAccess router={states.router} signOut={actions.signOut} styles={styles} />;
-
-
+  
   return (
     <div style={styles.layoutWrapper}>
 
@@ -67,7 +66,7 @@ export default function Home() {
         <header style={styles.mainHeader}>
           <div>
             <span style={styles.breadcrumb}>Dashboard / {activeTab.replace("tab-", "")}</span>
-            <h2 style={styles.pageTitle}>Painel de Controle</h2>
+
           </div>
           <button onClick={() => actions.setIsModalConfigOpen(true)} style={styles.btnSettings}>
             <Settings size={18} />
@@ -127,6 +126,10 @@ export default function Home() {
           setNewKeyDays={actions.setNewKeyDays} gerarNovaKey={actions.gerarNovaKey}
           loadingKey={states.loadingKey} keyList={states.keyList} excluirKey={actions.excluirKey}
           display={activeTab === "tab-master"}
+        />
+        <FerramentasTab 
+          styles={styles} 
+          display={activeTab === "tab-ferramentas"} 
         />
       </main>
 
