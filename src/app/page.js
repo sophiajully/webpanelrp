@@ -29,7 +29,7 @@ export default function Home() {
   const { states, actions } = useAppData();
   const { session, status, activeTab, isSidebarOpen, isMobile } = states;
   const router = useRouter();
-  if (status !== "authenticated") return router.push("/login")
+  if (status && status !== "authenticated") return router?.push("/login")
   if (status === "loading") {
     return (
       <div style={styles.loadingScreen}>

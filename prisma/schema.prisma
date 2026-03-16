@@ -36,6 +36,8 @@ model User {
   roleId    String?
   role      Role?    @relation(fields: [roleId], references: [id])
 
+  twoFactorEnabled  Boolean  @default(false)
+  twoFactorSecret   String?
   // Relação de Dono (Empresas que este usuário criou)
   ownedCompanies Company[] @relation("CompanyOwner")
   paymentsReceived Payment[] @relation("UserPayments")
