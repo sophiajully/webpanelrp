@@ -145,12 +145,8 @@ export function useAppData() {
   const trocarEmpresaAtiva = async (novoCompanyId) => {
     setLoadingAction(true);
     try {
-      const res = await submitServerAction('/api/users/switch-company', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyId: novoCompanyId })
-      });
-      if (res.ok) {
+      const res = await submitServerAction('/api/users/switch-company', 'PATCH', { companyId: novoCompanyId });
+      if (res.success) {
         await update({
           ...session,
           user: { ...session?.user, companyId: novoCompanyId }
@@ -158,7 +154,7 @@ export function useAppData() {
         window.location.reload();
       } else {
         const erro = await res;
-        alert(erro.error || "Erro ao trocar de empresa.");
+        alert("Erro ao trocar de empresa.");
       }
     } catch (err) {
       alert("Erro de conexão.");
