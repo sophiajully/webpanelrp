@@ -2,26 +2,14 @@ import React from 'react';
 import { 
   Bell, MessageSquare, ShoppingCart, Hammer, Store, 
   Shield, Users, Scroll, Key, LogOut, ChevronRight, Trash2, CircleDollarSign,
-  ChartArea, Toolbox, Plus
+  ChartArea, Toolbox
 } from "lucide-react";
-
-// Importações do shadcn/ui e utilitários
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 export default function Sidebar({ states, actions, styles }) {
   const { 
     session, 
     activeTab, 
-    isSidebarOpen, 
+    isSidebarOpen,
     isMobile, 
     showCompanySelector, 
     minhasEmpresas 
@@ -47,194 +35,189 @@ export default function Sidebar({ states, actions, styles }) {
   };
 
   return (
-    <aside 
-      className={cn(
-        "flex flex-col h-screen w-[280px] bg-background border-r border-border z-[150] transition-transform duration-300 ease-in-out",
-        isMobile ? "fixed top-0 left-0" : "relative top-0 left-0 shrink-0",
-        isMobile && !isSidebarOpen ? "-translate-x-full" : "translate-x-0"
-      )}
-    >
-      {/* PARTE SUPERIOR: MENU COM SCROLL */}
-      <ScrollArea className="flex-1 w-full">
-        <div className={cn("flex flex-col gap-1 pb-6", isMobile ? "pt-16" : "pt-4")}>
-          
-          {/* SEÇÃO DE EMPRESA (Apenas Owners) */}
-          {session?.user?.isOwner && (
-            <div className="px-4 mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  Propriedade Ativa
-                </span>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-auto p-0 text-[10px] text-primary hover:text-primary/80 hover:bg-transparent"
-                  onClick={() => setShowNovaEmpresaModal(true)}
-                >
-                  <Plus className="h-3 w-3 mr-1" /> Nova Empresa
-                </Button>
-              </div>
+    <nav style={{
+      ...styles.sidebar,
+      position: isMobile ? 'fixed' : 'relative',
+      top: 0,
+      left: 0,
+      height: '100vh',
+      width: '280px',
+      zIndex: 150,
+      transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+      transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      backgroundColor: '#0d0f14',
+      borderRight: '1px solid #1c1f26',
+      paddingTop: '10px',
+      paddingBottom: '10px'
+    }}>
 
-              {/* Utilizando o DropdownMenu nativo do shadcn */}
-              <DropdownMenu open={showCompanySelector} onOpenChange={setShowCompanySelector}>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-between bg-secondary/20 hover:bg-secondary/40 border-border h-12"
-                  >
-                    <span className="truncate">
-                      {session?.user?.companyName || "Selecionar Empresa"}
-                    </span>
-                    <ChevronRight className={cn(
-                      "h-4 w-4 shrink-0 transition-transform text-primary", 
-                      showCompanySelector && "rotate-90"
-                    )} />
-                  </Button>
-                </DropdownMenuTrigger>
-                
-                <DropdownMenuContent className="w-[248px] ml-4">
-                  {Array.isArray(minhasEmpresas) && minhasEmpresas.map((empresa) => (
-                    <DropdownMenuItem 
-                      key={empresa.id}
-                      className={cn(
-                        "flex justify-between items-center cursor-pointer",
-                        session?.user?.companyId === empresa.id && "bg-primary/10 text-primary focus:bg-primary/15"
-                      )}
-                      onSelect={(e) => {
-                        e.preventDefault(); // Previne fechar antes da lógica
-                        trocarEmpresaAtiva(empresa.id); 
-                        setShowCompanySelector(false);
+      {/* PARTE SUPERIOR: MENU COM SCROLL */}
+      <div style={{ 
+        flex: 1, 
+        overflowY: 'auto', 
+        paddingTop: isMobile ? '60px' : '0'
+      }}>
+        
+        {/* SEÇÃO DE EMPRESA (Apenas Owners) */}
+        {session?.user?.isOwner && (
+          <div style={{ padding: '0 24px 20px', position: 'relative' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <label style={{ fontSize: '0.6rem', color: '#4b5563', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                Propriedade Ativa
+              </label>
+              <button 
+                onClick={() => setShowNovaEmpresaModal(true)}
+                style={{ background: 'none', border: 'none', color: 'var(--cor-primaria)', cursor: 'pointer', fontSize: '0.65rem' }}
+              >
+                + Nova Empresa
+              </button>
+            </div>
+
+            <div 
+              onClick={() => setShowCompanySelector(!showCompanySelector)}
+              style={{
+                background: '#161922',
+                border: '1px solid #1c1f26',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: '600' }}>
+                {session?.user?.companyName || "Selecionar Empresa"}
+              </span>
+              <ChevronRight size={16} style={{ 
+                transform: showCompanySelector ? 'rotate(90deg)' : 'rotate(0deg)', 
+                transition: '0.2s',
+                color: 'var(--cor-primaria)'
+              }} />
+            </div>
+
+            {/* Dropdown de Empresas */}
+            {showCompanySelector && (
+              <div style={{
+                position: 'absolute', top: '100%', left: '24px', right: '24px',
+                background: '#1c1f26', border: '1px solid #2d2d3d', borderRadius: '8px',
+                marginTop: '5px', zIndex: 100, maxHeight: '200px', overflowY: 'auto'
+              }}>
+                {Array.isArray(minhasEmpresas) && minhasEmpresas.map((empresa) => (
+                  <div key={empresa.id} style={{ 
+                    display: 'flex', alignItems: 'center', borderBottom: '1px solid #2d2d3d',
+                    background: session?.user?.companyId === empresa.id ? 'rgba(212, 169, 28, 0.05)' : 'transparent'
+                  }}>
+                    <button
+                      onClick={() => { trocarEmpresaAtiva(empresa.id); setShowCompanySelector(false); }}
+                      style={{ 
+                        flex: 1, padding: '12px', background: 'none', border: 'none', 
+                        color: session?.user?.companyId === empresa.id ? 'var(--cor-primaria)' : '#9ca3af', 
+                        textAlign: 'left', fontSize: '0.8rem', cursor: 'pointer'
                       }}
                     >
-                      <span className="truncate">{empresa.name}</span>
-                      {session?.user?.companyId !== empresa.id && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            excluirEmpresa(empresa.id, empresa.name);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      {empresa.name}
+                    </button>
+                    {session?.user?.companyId !== empresa.id && (
+                      <button
+                        onClick={() => excluirEmpresa(empresa.id, empresa.name)}
+                        style={{ padding: '0 12px', background: 'none', border: 'none', color: '#4b2a2a', cursor: 'pointer' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={styles.navLabel}>PRINCIPAL</div>
+        <div style={styles.navMenu}>
+          <NavItem active={activeTab === "tab-avisos"} icon={<Bell size={18}/>} label="Avisos" onClick={() => handleTabClick("tab-avisos", "Avisos")} styles={styles} />
+          <NavItem active={activeTab === "tab-dashboard"} icon={<ChartArea size={18}/>} label="Dashboard" onClick={() => handleTabClick("tab-dashboard", "Dashboard")} styles={styles} />
+          <NavItem active={activeTab === "tab-ferramentas"} icon={<Toolbox size={18}/>} label="Ferramentas" onClick={() => handleTabClick("tab-ferramentas", "Dashboard")} styles={styles} />
+          
+          <NavItem active={activeTab === "tab-chat"} icon={<MessageSquare size={18}/>} label="Chat Interno" onClick={() => handleTabClick("tab-chat", "Chat da Fazenda")} styles={styles} />
+
+          {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
+            <NavItem active={activeTab === "tab-vendas"} icon={<ShoppingCart size={18}/>} label="Pedidos" onClick={() => handleTabClick("tab-vendas", "Nova Encomenda")} styles={styles} />
+          )}
+
+          {(session?.user?.isOwner || session?.user?.role?.canCraft) && (
+            <NavItem active={activeTab === "tab-registrar"} icon={<Hammer size={18}/>} label="Craft" onClick={() => handleTabClick("tab-registrar", "Registrar Craft")} styles={styles} />
+          )}
+
+          <div style={styles.navLabel}>GESTÃO</div>
+          <NavItem active={activeTab === "tab-pagamentos"} icon={<CircleDollarSign size={18}/>} label="Pagamentos" onClick={() => handleTabClick("tab-pagamentos", "Pagamentos")} styles={styles} />
+          
+          {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
+            <div style={styles.navItem} onClick={() => window.location.href='/mercadao'}>
+              <Store size={18} /> Mercadão
             </div>
           )}
 
-          <div className="px-3">
-            <h4 className="px-2 mb-1 mt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Principal
-            </h4>
-            <div className="space-y-1">
-              <NavItem active={activeTab === "tab-avisos"} icon={<Bell size={18}/>} label="Avisos" onClick={() => handleTabClick("tab-avisos", "Avisos")} />
-              <NavItem active={activeTab === "tab-dashboard"} icon={<ChartArea size={18}/>} label="Dashboard" onClick={() => handleTabClick("tab-dashboard", "Dashboard")} />
-              <NavItem active={activeTab === "tab-ferramentas"} icon={<Toolbox size={18}/>} label="Ferramentas" onClick={() => handleTabClick("tab-ferramentas", "Ferramentas")} />
-              <NavItem active={activeTab === "tab-chat"} icon={<MessageSquare size={18}/>} label="Chat Interno" onClick={() => handleTabClick("tab-chat", "Chat da Fazenda")} />
+          {(session?.user?.isOwner || session?.user?.role?.canAdmin) && (
+            <NavItem active={activeTab === "tab-roles"} icon={<Shield size={18}/>} label="Gerenciar Cargos" onClick={() => handleTabClick("tab-roles", "Gerenciar Cargos")} styles={styles} />
+          )}
+          
+          {(session?.user?.isOwner || session?.user?.role?.canAdmin) && (
+            <NavItem active={activeTab === "tab-equipe"} icon={<Users size={18}/>} label="Gerenciar Equipe" onClick={() => handleTabClick("tab-equipe", "Gerenciar Equipe")} styles={styles} />
+          )}
 
-              {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
-                <NavItem active={activeTab === "tab-vendas"} icon={<ShoppingCart size={18}/>} label="Pedidos" onClick={() => handleTabClick("tab-vendas", "Nova Encomenda")} />
-              )}
+          {(session?.user?.isOwner || session?.user?.role?.canLogs) && (
+            <NavItem active={activeTab === "tab-logs"} icon={<Scroll size={18}/>} label="Logs" onClick={() => handleTabClick("tab-logs", "Logs")} styles={styles} />
+          )}
 
-              {(session?.user?.isOwner || session?.user?.role?.canCraft) && (
-                <NavItem active={activeTab === "tab-registrar"} icon={<Hammer size={18}/>} label="Craft" onClick={() => handleTabClick("tab-registrar", "Registrar Craft")} />
-              )}
-            </div>
-
-            <Separator className="my-4" />
-
-            <h4 className="px-2 mb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Gestão
-            </h4>
-            <div className="space-y-1">
-              <NavItem active={activeTab === "tab-pagamentos"} icon={<CircleDollarSign size={18}/>} label="Pagamentos" onClick={() => handleTabClick("tab-pagamentos", "Pagamentos")} />
-              
-              {(session?.user?.isOwner || session?.user?.role?.canVendas) && (
-                <NavItem active={false} icon={<Store size={18}/>} label="Mercadão" onClick={() => window.location.href='/mercadao'} />
-              )}
-
-              {(session?.user?.isOwner || session?.user?.role?.canAdmin) && (
-                <NavItem active={activeTab === "tab-roles"} icon={<Shield size={18}/>} label="Gerenciar Cargos" onClick={() => handleTabClick("tab-roles", "Gerenciar Cargos")} />
-              )}
-              
-              {(session?.user?.isOwner || session?.user?.role?.canAdmin) && (
-                <NavItem active={activeTab === "tab-equipe"} icon={<Users size={18}/>} label="Gerenciar Equipe" onClick={() => handleTabClick("tab-equipe", "Gerenciar Equipe")} />
-              )}
-
-              {(session?.user?.isOwner || session?.user?.role?.canLogs) && (
-                <NavItem active={activeTab === "tab-logs"} icon={<Scroll size={18}/>} label="Logs" onClick={() => handleTabClick("tab-logs", "Logs")} />
-              )}
-            </div>
-
-            {session?.user?.name === "admin" && (
-              <>
-                <Separator className="my-4" />
-                <h4 className="px-2 mb-1 text-xs font-semibold text-destructive uppercase tracking-wider">
-                  Administração
-                </h4>
-                <div className="space-y-1">
-                  <NavItem 
-                    active={activeTab === "tab-master"} 
-                    icon={<Key size={18} />} 
-                    label="Master Keys" 
-                    onClick={() => handleTabClick("tab-master", "Master Keys")} 
-                    className={activeTab === "tab-master" ? "bg-destructive/10 text-destructive hover:bg-destructive/15" : "hover:text-destructive hover:bg-destructive/5"}
-                  />
-                </div>
-              </>
-            )}
-          </div>
+          {session?.user?.name === "admin" && (
+            <>
+              <div style={styles.navLabel}>ADMINISTRAÇÃO</div>
+              <div 
+                style={{...styles.navItemMaster, ...(activeTab === "tab-master" ? styles.navItemMasterActive : {})}} 
+                onClick={() => handleTabClick("tab-master", "Master Keys")}
+              >
+                <Key size={18} /> Master Keys
+              </div>
+            </>
+          )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* RODAPÉ: PERFIL E LOGOUT */}
       <div 
-        className="mt-auto flex items-center justify-between p-4 border-t border-border bg-background cursor-pointer hover:bg-secondary/50 transition-colors"
+        style={{ 
+          ...styles.userInfoBar, 
+          cursor: 'pointer', borderTop: '1px solid #1c1f26', padding: '15px 24px',
+          backgroundColor: '#0d0f14', flexShrink: 0, marginBottom: '20px'
+        }} 
         onClick={() => setShowPerfilModal(true)}
       >
-        <div className="flex flex-col overflow-hidden">
-          <span className="text-sm font-medium truncate">{session?.user?.name}</span>
-          <span className="text-xs text-muted-foreground truncate">
+        <div style={styles.userDetails}>
+          <span style={styles.userName}>{session?.user?.name}</span>
+          <span style={styles.userRole}>
             {session?.user?.role?.name || (session?.user?.isOwner ? "Dono" : "Funcionário")}
           </span>
         </div>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-          onClick={(e) => { 
-            e.stopPropagation(); 
-            signOut(); 
-          }}
-        >
-          <LogOut size={18} />
-        </Button>
+        <button style={styles.btnLogoutIcon} onClick={(e) => { e.stopPropagation(); signOut(); }}>
+          <LogOut size={16} />
+        </button>
       </div>
-    </aside>
+    </nav>
   );
 }
 
-// Sub-componente utilizando o Button do shadcn para gerenciar estado e acessibilidade
-function NavItem({ active, icon, label, onClick, className }) {
+// Sub-componente para os itens do menu (evita repetição de código)
+function NavItem({ active, icon, label, onClick, styles }) {
   return (
-    <Button
-      variant="ghost"
-      className={cn(
-        "w-full justify-start gap-3 px-3 h-10 font-normal",
-        active 
-          ? "bg-primary/10 text-primary hover:bg-primary/15 font-medium" 
-          : "text-muted-foreground hover:text-foreground hover:bg-secondary",
-        className
-      )}
+    <div 
+      style={{...styles.navItem, ...(active ? styles.navItemActive : {})}} 
       onClick={onClick}
     >
-      {icon} 
-      <span>{label}</span>
-    </Button>
+      {icon} {label}
+    </div>
   );
 }

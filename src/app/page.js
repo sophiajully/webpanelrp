@@ -148,7 +148,7 @@ export default function Home() {
       />
 
       <NovaEmpresaModal
-        isOpen={states.showNovaNovaEmpresaModal} onClose={() => actions.setShowNovaEmpresaModal(false)}
+        isOpen={states.showNovaEmpresaModal} onClose={() => actions.setShowNovaEmpresaModal(false)}
         styles={styles} novaEmpresaData={states.novaEmpresaData} setNovaEmpresaData={actions.setNovaEmpresaData}
         criarNovaEmpresa={actions.criarNovaEmpresa} loadingAction={states.loadingAction}
       />
